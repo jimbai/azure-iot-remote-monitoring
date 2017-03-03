@@ -794,6 +794,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             {
                 DeviceModel device = DeviceCreatorHelper.BuildDeviceStructure(id, true, null);
                 SecurityKeys generatedSecurityKeys = _securityKeyGenerator.CreateRandomKeys();
+                SampleDeviceFactory.AssignDefaultTags(device);
+                SampleDeviceFactory.AssignDefaultDesiredProperties(device);
                 await this.AddDeviceToRepositoriesAsync(device, generatedSecurityKeys);
             }
             return sampleIds;
@@ -824,8 +826,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
                     try
                     {
-                        latitude = (double)device.Twin.Properties.Reported.Get("Location.Latitude");
-                        longitude = (double)device.Twin.Properties.Reported.Get("Location.Longitude");
+                        latitude = (double)device.Twin.Properties.Reported.Get("Device.Location.Latitude");
+                        longitude = (double)device.Twin.Properties.Reported.Get("Device.Location.Longitude");
                     }
                     catch
                     {

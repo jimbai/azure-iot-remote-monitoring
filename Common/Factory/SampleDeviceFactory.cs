@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Exceptions;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models.Commands;
+using Microsoft.Azure.Devices.Shared;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Factory
 {
@@ -21,11 +23,54 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Factory
 
         private static readonly Random Rand = new Random();
 
-        private static readonly List<string> DefaultDeviceNames = new List<string>{
-            "SampleDevice001",
-            "SampleDevice002",
-            "SampleDevice003",
-            "SampleDevice004"
+        private static readonly List<string> DefaultDeviceNames = new List<string>
+        {
+            "CoolingSampleDevice001",
+            "CoolingSampleDevice002",
+            "CoolingSampleDevice003",
+            "CoolingSampleDevice004",
+            "CoolingSampleDevice005",
+            "CoolingSampleDevice006",
+            "CoolingSampleDevice007",
+            "CoolingSampleDevice008",
+            "CoolingSampleDevice009",
+            "CoolingSampleDevice010",
+            "CoolingSampleDevice011",
+            "CoolingSampleDevice012",
+            "CoolingSampleDevice013",
+            "CoolingSampleDevice014",
+            "CoolingSampleDevice015",
+            "CoolingSampleDevice016",
+            "CoolingSampleDevice017",
+            "CoolingSampleDevice018",
+            "CoolingSampleDevice019",
+            "CoolingSampleDevice020",
+            "CoolingSampleDevice021",
+            "CoolingSampleDevice022",
+            "CoolingSampleDevice023",
+            "CoolingSampleDevice024",
+            "CoolingSampleDevice025"
+        };
+
+        private static readonly List<string> FreeFirmwareDeviceNames = new List<string>
+        {
+            "CoolingSampleDevice001",
+            "CoolingSampleDevice002",
+            "CoolingSampleDevice003",
+            "CoolingSampleDevice004",
+            "CoolingSampleDevice005",
+            "CoolingSampleDevice006",
+            "CoolingSampleDevice007",
+            "CoolingSampleDevice008"
+        };
+
+        private static readonly List<string> HighTemperatureDeviceNames = new List<string>
+        {
+            "CoolingSampleDevice001",
+            "CoolingSampleDevice002",
+            "CoolingSampleDevice003",
+            "CoolingSampleDevice004",
+            "CoolingSampleDevice005"
         };
 
         private class Location
@@ -58,6 +103,18 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Factory
             new Location(47.642876, -122.125492), //16070 NE 36th Way Bldg 33, Redmond, WA 98052
             new Location(47.637376, -122.140445), //14999 NE 31st Way, Redmond, WA 98052
             new Location(47.636121, -122.130254) //3009 157th Pl NE, Redmond, WA 98052
+        };
+
+        private static List<string> _possibleBuildingTags = new List<string>
+        {
+            "Building 40",
+            "Building 43"
+        };
+
+        private static List<string> _possibleFloorTags = new List<string>
+        {
+            "1F",
+            "2F",
         };
 
         public static DeviceModel GetSampleSimulatedDevice(string deviceId, string key)
@@ -107,7 +164,16 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Factory
             device.DeviceProperties.Manufacturer = "Contoso Inc.";
             device.DeviceProperties.ModelNumber = "MD-" + randomId;
             device.DeviceProperties.SerialNumber = "SER" + randomId;
-            device.DeviceProperties.FirmwareVersion = "1." + randomId;
+
+            if (FreeFirmwareDeviceNames.Any(n => device.DeviceProperties.DeviceID.StartsWith(n)))
+            {
+                device.DeviceProperties.FirmwareVersion = "1." + randomId;
+            }
+            else
+            {
+                device.DeviceProperties.FirmwareVersion = "2.0";
+            }
+
             device.DeviceProperties.Platform = "Plat-" + randomId;
             device.DeviceProperties.Processor = "i3-" + randomId;
             device.DeviceProperties.InstalledRAM = randomId + " MB";
@@ -162,13 +228,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Factory
 
             // Device methods
             device.Commands.Add(new Command(
-                "ChangeDeviceState",
-                DeliveryType.Method,
-                "Sets the device state metadata property that the device reports. This is useful for testing back-end logic.",
-                new[] { new Parameter("DeviceState", "string") }
-            ));
-            device.Commands.Add(new Command(
-                "FirmwareUpdate",
+                "InitiateFirmwareUpdate",
                 DeliveryType.Method,
                 "Updates device Firmware. Use parameter 'FwPackageUri' to specifiy the URI of the firmware file, e.g. https://iotrmassets.blob.core.windows.net/firmwares/FW20.bin",
                 new[] { new Parameter("FwPackageUri", "string") }
@@ -183,27 +243,41 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Factory
                 DeliveryType.Method,
                 "Reset the device (including firmware and configuration) to factory default state"
             ));
-            device.Commands.Add(new Command(
-                "PingDevice",
-                DeliveryType.Method,
-                "The device responds to this method with an acknowledgement. This is useful for checking that the device is still active and listening."
-            ));
-            device.Commands.Add(new Command(
-                "StartTelemetry",
-                DeliveryType.Method,
-                "Instructs the device to start sending telemetry."
-            ));
-            device.Commands.Add(new Command(
-                "StopTelemetry",
-                DeliveryType.Method,
-                "Instructs the device to stop sending telemetry."
-            ));
         }
 
         public static List<string> GetDefaultDeviceNames()
         {
             long milliTime = DateTime.Now.Millisecond;
             return DefaultDeviceNames.Select(r => string.Concat(r, "_" + milliTime)).ToList();
+        }
+
+        public static void AssignDefaultTags(DeviceModel device)
+        {
+            if (device.Twin == null)
+            {
+                device.Twin = new Twin();
+            }
+
+            device.Twin.Tags["Building"] = Random(_possibleBuildingTags);
+            device.Twin.Tags["Floor"] = Random(_possibleFloorTags);
+        }
+
+        public static void AssignDefaultDesiredProperties(DeviceModel device)
+        {
+            if (HighTemperatureDeviceNames.Any(n => device.DeviceProperties.DeviceID.StartsWith(n)))
+            {
+                if (device.Twin == null)
+                {
+                    device.Twin = new Twin();
+                }
+
+                device.Twin.Properties.Desired.Set("Config.TemperatureMeanValue", 70);
+            }
+        }
+
+        private static T Random<T>(IList<T> range)
+        {
+            return range[Rand.Next(range.Count)];
         }
     }
 }

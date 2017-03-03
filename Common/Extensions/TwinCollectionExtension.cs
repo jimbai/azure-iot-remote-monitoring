@@ -25,8 +25,9 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extension
         /// </summary>
         /// <param name="collection">Twin.Tag, Twin.Properties.Desired or Twin.Properties.Reported</param>
         /// <param name="prefix">Custom specified prefix for all items, e.g. "tags."</param>
+        /// <param name="IgnoreNullValue">Indicate whether to skip items with null value</param>
         /// <returns>Enumerator returns the flat name and value</returns>
-        static public IEnumerable<KeyValuePair<string, TwinValue>> AsEnumerableFlatten(this TwinCollection collection, string prefix = "")
+        static public IEnumerable<KeyValuePair<string, TwinValue>> AsEnumerableFlatten(this TwinCollection collection, string prefix = "", bool IgnoreNullValue = true)
         {
             if (collection == null)
             {
@@ -37,7 +38,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extension
             {
                 if (pair.Value is TwinCollection)
                 {
-                    var results = AsEnumerableFlatten(pair.Value as TwinCollection, $"{prefix}{pair.Key}.");
+                    var results = AsEnumerableFlatten(pair.Value as TwinCollection, $"{prefix}{pair.Key}.", IgnoreNullValue);
                     foreach (var result in results)
                     {
                         yield return result;
@@ -45,7 +46,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extension
                 }
                 else if (pair.Value is JContainer)
                 {
-                    var results = AsEnumerableFlatten(pair.Value as JContainer, $"{prefix}{pair.Key}.");
+                    var results = AsEnumerableFlatten(pair.Value as JContainer, $"{prefix}{pair.Key}.", IgnoreNullValue);
                     foreach (var result in results)
                     {
                         yield return result;
@@ -62,6 +63,17 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extension
                             LastUpdated = (pair.Value as TwinCollectionValue)?.GetLastUpdated()
                         });
                     }
+                    else
+                    {
+                        if (!IgnoreNullValue)
+                        {
+                            yield return new KeyValuePair<string, TwinValue>($"{prefix}{pair.Key}", new TwinValue
+                            {
+                                Value = JValue.CreateNull(),
+                                LastUpdated = (pair.Value as TwinCollectionValue)?.GetLastUpdated()
+                            });
+                        }
+                    }
                 }
                 else
                 {
@@ -72,13 +84,13 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extension
             }
         }
 
-        static private IEnumerable<KeyValuePair<string, TwinValue>> AsEnumerableFlatten(this JContainer container, string prefix = "")
+        static private IEnumerable<KeyValuePair<string, TwinValue>> AsEnumerableFlatten(this JContainer container, string prefix = "", bool IgnoreNullValue = true)
         {
             foreach (var child in container.Children<JProperty>())
             {
                 if (child.Value is JContainer)
                 {
-                    var results = AsEnumerableFlatten(child.Value as JContainer, $"{prefix}{child.Name}.");
+                    var results = AsEnumerableFlatten(child.Value as JContainer, $"{prefix}{child.Name}.", IgnoreNullValue);
                     foreach (var result in results)
                     {
                         yield return result;
@@ -94,6 +106,17 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extension
                             Value = value,
                             LastUpdated = (child.Value as TwinCollectionValue)?.GetLastUpdated()
                         });
+                    }
+                    else
+                    {
+                        if (!IgnoreNullValue)
+                        {
+                            yield return new KeyValuePair<string, TwinValue>($"{prefix}{child.Name}", new TwinValue
+                            {
+                                Value = JValue.CreateNull(),
+                                LastUpdated = (child.Value as TwinCollectionValue)?.GetLastUpdated()
+                            });
+                        }
                     }
                 }
                 else
@@ -259,28 +282,30 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extension
                 // Current node is the target node, set the value
                 container[name] = value;
             }
-            else if (!container.Contains(name))
-            {
-                // The target container is not exist, create and add it
-                var newContainer = new JObject();
-                Set(newContainer, names.Skip(1), value);
-                container[name] = newContainer;
-                return;
-            }
             else
             {
-                // Current node is container, go to next level
-                var child = container[name];
-                if (child is JContainer)
+                var child = container.SelectToken(name);
+                if (child == null)
                 {
-                    Set(child as JContainer, names.Skip(1), value);
+                    // The target container is not exist, create and add it
+                    var newContainer = new JObject();
+                    Set(newContainer, names.Skip(1), value);
+                    container[name] = newContainer;
                 }
                 else
                 {
-                    // The next level of JContainer must be JContainer
+                    // Current node is container, go to next level
+                    if (child is JContainer)
+                    {
+                        Set(child as JContainer, names.Skip(1), value);
+                    }
+                    else
+                    {
+                        // The next level of JContainer must be JContainer
 #if DEBUG
-                    throw new ApplicationException($"Unexpected TwinCollection item JTokenType: {child.Type} @ {child.Path}");
+                        throw new ApplicationException($"Unexpected TwinCollection item JTokenType: {child.Type} @ {child.Path}");
 #endif
+                    }
                 }
             }
         }

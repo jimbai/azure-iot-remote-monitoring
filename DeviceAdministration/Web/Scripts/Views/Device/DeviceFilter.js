@@ -65,24 +65,19 @@
             $('.filter_panel_container').hide();
         },
         openSaveAsDialog: function () {
-            self.model.saveAsName(self.model.name());
+            self.model.saveAsName('');
             $('#saveAdFilterButtons').show();
             $('#saveAdFilterButtonsMultiSelection').hide();
             $('.filter_panel_dialog_container').show();
-            $('.filter_panel_filtername_saveas_input').focus();
+            $('.filter_panel_filtername_saveas_input').select();
         },
         openSaveAsDialogForSelectedDevices: function (selectedDeviceIds) {
             self.selectedDeviceIds = selectedDeviceIds;
             self.model.saveAsName('');
-            $('#defaultNameLoadingElement').show();
-            api.getNewFilterName(function (name) {
-                $('.filter_panel_filtername_saveas_input').focus();
-                self.model.saveAsName(name);
-                $('#defaultNameLoadingElement').hide();
-            });
             $('#saveAdFilterButtons').hide();
             $('#saveAdFilterButtonsMultiSelection').show();
             $('.filter_panel_dialog_container').show();
+            $('.filter_panel_filtername_saveas_input').select();
         },
         closeSaveAsDialog: function () {
             $('.filter_panel_dialog_container').hide();
@@ -91,7 +86,7 @@
             if (self.model.canSave()) {
                 self.originalFilterName = self.model.name();
                 $('.device_list_toolbar_filtername').hide();
-                $('.device_list_toolbar_filtername_input').show().focus();
+                $('.device_list_toolbar_filtername_input').show().select();
             }
         },
         stopEditFilterName: function () {
@@ -176,8 +171,16 @@
                 }
             }
         },
-        saveFilter: function () {
+        saveFilter: function (callback, notAllowDefaultFilterName) {
+            if (notAllowDefaultFilterName && self.model.name() == resources.defaultFilterName) {
+                IoTApp.Helpers.Dialog.displayError(resources.pleaseNameYourFilter, function () {
+                    self.model.startEditFilterName();
+                });
+                return;
+            }
+
             var filter = self.model.getFilterModel();
+            $('.loader_container').show();
             api.saveFilter(filter, function (result) {
                 if (!self.model.id()) {
                     self.model.id(result.id);
@@ -185,23 +188,48 @@
                 self.model.isFilterLoadedFromServer(true);
                 self.model.loadFilters();
                 self.model.isChanged(false);
-            })
+                $('.loader_container').hide();
+
+                if ($.isFunction(callback)) {
+                    callback();
+                }
+            }, function () {
+                $('.loader_container').hide();
+            });
         },
         saveAsFilter: function () {
+            if (self.model.saveAsName() == resources.defaultFilterName) {
+                IoTApp.Helpers.Dialog.displayError(resources.pleaseNameYourFilter, function () {
+                    $('.filter_panel_filtername_saveas_input').select();
+                });
+                return;
+            }
+
             self.model.closeSaveAsDialog();
             var newName = self.model.saveAsName();
             self.model.id(null);
             self.model.name(newName);
             var filter = self.model.getFilterModel();
 
+            $('.loader_container').show();
             api.saveFilter(filter, function (result) {
                 self.model.id(result.id);
                 self.model.isFilterLoadedFromServer(true);
                 self.model.loadFilters();
                 self.model.isChanged(false);
-            })
+                $('.loader_container').hide();
+            }, function () {
+                $('.loader_container').hide();
+            });
         },
         saveAsFilterForSelectedDevices: function (open) {
+            if (self.model.saveAsName() == resources.defaultFilterName) {
+                IoTApp.Helpers.Dialog.displayError(resources.pleaseNameYourFilter, function () {
+                    $('.filter_panel_filtername_saveas_input').select();
+                });
+                return;
+            }
+
             self.model.closeSaveAsDialog();
             var newName = self.model.saveAsName();
             $('.loader_container').show();
@@ -215,23 +243,24 @@
                 }
 
                 self.model.loadFilters();
+            }, function () {
+                $('.loader_container').hide();
             });
         },
-        saveFilterForSelectedDevices: function (name, deviceIds, callback) {
-            if (name == null) {
-                api.getNewFilterName(function (name) {
-                    self.model.saveFilterForSelectedDevices(name, deviceIds, callback);
-                });
-            }
-            else {
-                self.model.createAndSaveFilterWithClause(name, "deviceId", "IN", deviceIds.join(", "), function (filterId) {
-                    if ($.isFunction(callback)) {
-                        callback(filterId);
-                    }
-                });
-            }
+        saveFilterForSelectedDevices: function (name, deviceIds, successCallback, errorCallback) {
+            name = name || resources.defaultFilterName;
+            
+            self.model.createAndSaveFilterWithClause(name, "deviceId", "IN", deviceIds.join(", "), function (filterId) {
+                if ($.isFunction(successCallback)) {
+                    successCallback(filterId);
+                }
+            }, function (exceptionType) {
+                if ($.isFunction(errorCallback)) {
+                    errorCallback(exceptionType);
+                }
+            });
         },
-        createAndSaveFilterWithClause: function (name, columnName, operator, value, callback) {
+        createAndSaveFilterWithClause: function (name, columnName, operator, value, successCallback, errorCallback) {
             var filter = {
                 name: name,
                 filterName: name,
@@ -244,10 +273,14 @@
             };
 
             api.saveFilter(filter, function (result) {
-                if ($.isFunction(callback)) {
-                    callback(result.id);
+                if ($.isFunction(successCallback)) {
+                    successCallback(result.id);
                 }
-            })
+            }, function (exceptionType) {
+                if ($.isFunction(errorCallback)) {
+                    errorCallback(exceptionType);
+                }
+            });
         },
         deleteFilter: function (data, e, forceDelete) {
             if (self.model.associatedJobsCount()) {
@@ -313,17 +346,15 @@
             }
         },
         newFilter: function (callback) {
-            api.getNewFilterName(function (name) {
-                self.model.setFilter({
-                    id: null,
-                    name: name,
-                    clauses: [],
-                    isAdvanced: false,
-                    advancedClause: "",
-                    associatedJobsCount: 0
-                });
-                self.model.isChanged(true);
+            self.model.setFilter({
+                id: null,
+                name: resources.defaultFilterName,
+                clauses: [],
+                isAdvanced: false,
+                advancedClause: "",
+                associatedJobsCount: 0
             });
+            self.model.isChanged(true);
         },
         executeFilter: function () {
             if (self.model.canAddClause())
@@ -351,7 +382,8 @@
                 filter: self.model.getFilterModel(),
                 isChanged: self.model.isChanged(),
                 isFilterLoaded: self.model.isFilterLoaded(),
-                isFilterLoadedFromServer: self.model.isFilterLoadedFromServer()
+                isFilterLoadedFromServer: self.model.isFilterLoadedFromServer(),
+                associatedJobsCount: self.model.associatedJobsCount()
             }
         },
         restoreState: function () {
@@ -359,6 +391,7 @@
             self.model.isChanged(self.state.isChanged);
             self.model.isFilterLoaded(self.state.isFilterLoaded);
             self.model.isFilterLoadedFromServer(self.state.isFilterLoadedFromServer);
+            self.model.associatedJobsCount(self.state.associatedJobsCount);
         },
         getFilterModel: function () {
             return {
@@ -399,24 +432,47 @@
                 operator: ko.observable(operator || "EQ"),
                 value: ko.observable(value),
                 dataType: ko.observable(dataType || resources.twinDataType.string),
+                dataTypeConfirmed: false,
                 checked: ko.observable(checked == null ? true : checked),
                 shortDisplayName: ko.pureComputed(function () {
                     var parts = clause.field().split('.');
-                    return parts[parts.length - 1] + " " + self.model.getOperatorText(clause.operator()) + " " + clause.value();
+                    return clause.formatDisplayName(parts[parts.length - 1], clause.operator(), clause.value(), clause.dataType());
                 }),
                 displayName: ko.pureComputed(function () {
-                    return clause.field() + " " + self.model.getOperatorText(clause.operator()) + " " + clause.value();
+                    return clause.formatDisplayName(clause.field(), clause.operator(), clause.value(), clause.dataType());
                 }),
+                formatDisplayName: function (field, operator, value, dataType) {
+                    if (operator == 'IN') {
+                        var items = util.split(value);
+
+                        $.each(items, function(idx, item) {
+                            items[idx] = util.addQuoteIfNeeded(dataType, item);
+                        })
+
+                        value = items.join(', ');
+                    }
+                    else {
+                        value = util.addQuoteIfNeeded(dataType, value);
+                    }
+
+                    return field + " " + self.model.getOperatorText(operator) + " " + value;
+                },
                 toggle: function () {
                     clause.checked(!clause.checked());
                     self.model.isChanged(true);
                 },
-                remove: function () {
-                    api.deleteSuggestedClause(self.model.getClauseModel(clause), function () {
-                        getSuggestedClauses();
+                remove: function (data, e) {
+                    IoTApp.Helpers.Dialog.confirm(resources.deleteClauseConfirmation, function (result) {
+                        if (result) {
+                            api.deleteSuggestedClause(self.model.getClauseModel(clause), function () {
+                                getSuggestedClauses();
+                            });
+
+                            self.model.removeClause(clause);
+                        }
                     });
 
-                    self.model.removeClause(clause);
+                    e.stopPropagation();
                 }
             };
 
@@ -501,11 +557,11 @@
         }),
         setDataTypeFromAvailableValues: function (values) {
             var finalType = null;
-            values.forEach(function (value) {
+            $.each(values, function (idx, value) {
                 var type = self.model.getDataType(value);
 
                 if (finalType && finalType != type) {
-                    finalType = resources.twinDataType.string;
+                    finalType = null;
                     return false;
                 }
 
@@ -514,6 +570,10 @@
 
             if (finalType) {
                 self.model.currentClause().dataType(finalType);
+                self.model.currentClause().dataTypeConfirmed = true;
+            }
+            else {
+                self.model.currentClause().dataTypeConfirmed = false;
             }
         },
         getDataType: function (value) {
@@ -527,6 +587,10 @@
             }
         },
         setDataTypeFromCurrentValue: function () {
+            if (self.model.currentClause().dataTypeConfirmed) {
+                return;
+            }
+
             var value = $('#txtValue').val();
             var values;
             if (self.model.currentClause().operator() == "IN") {
@@ -537,7 +601,7 @@
             }
 
             var finalType = null;
-            values.forEach(function (value) {
+            $.each(values, function (idx, value) {
                 var type = self.model.getDataTypeFromString(value);
 
                 if (finalType && finalType != type) {
@@ -610,9 +674,9 @@
 
     var util = {
         split: function (val) {
-            return val.split(/,\s*/);f
+            return val.split(/,\s*/); f
         },
-        extractLast: function(term) {
+        extractLast: function (term) {
             return util.split(term).pop();
         },
         trim: function (str, chars) {
@@ -623,23 +687,18 @@
 
             return str;
         },
-        getDataType: function (value) {
-            var type;
-            if ($.isNumeric(value)) {
-                return resources.twinDataType.number
+        addQuoteIfNeeded: function (dataType, value) {
+            if (dataType == resources.twinDataType.string && value.indexOf("\'") != 0 && value.lastIndexOf("\'") != value.length - 1) {
+                value = "\'" + value + "\'";
             }
-            else if (/^true$|^false$/i.test(value)) {
-                return resources.twinDataType.boolean
-            }
-            else {
-                return resources.twinDataType.string;
-            }
+
+            return value;
         }
-    }
-    self.util = util;
+    };
+
     var api = {
         getSuggestedClauses: function (callback) {
-            var url = "/api/v1/suggestedClauses?skip=0&take=10";
+            var url = "/api/v1/suggestedClauses?skip=0&take=15";
             return $.ajax({
                 url: url,
                 type: 'GET',
@@ -739,7 +798,7 @@
                 }
             });
         },
-        saveFilter: function (filter, callback) {
+        saveFilter: function (filter, successCallback, errorCallback) {
             var url = "/api/v1/filters";
             return $.ajax({
                 url: url,
@@ -747,12 +806,31 @@
                 data: filter,
                 dataType: 'json',
                 success: function (result) {
-                    if ($.isFunction(callback)) {
-                        callback(result.data);
+                    if ($.isFunction(successCallback)) {
+                        successCallback(result.data);
                     }
                 },
-                error: function () {
-                    IoTApp.Helpers.Dialog.displayError(resources.failedToSaveFilter);
+                error: function (xhr, status, error) {
+                    var exceptionType;
+                    var message;
+                    if (xhr.responseJSON && xhr.responseJSON.error && xhr.responseJSON.error.length > 0) {
+                        exceptionType = xhr.responseJSON.error[0].exceptionType;
+                    }
+
+                    switch(exceptionType) {
+                        case "FilterDuplicatedNameException":
+                            message = resources.filterNameMustBeUnique;
+                            break;
+                        default:
+                            message = resources.failedToSaveFilter;
+                            break;
+                    }
+                    
+                    IoTApp.Helpers.Dialog.displayError(message);
+                    
+                    if ($.isFunction(errorCallback)) {
+                        errorCallback(exceptionType);
+                    }
                 }
             });
         },
@@ -840,9 +918,12 @@
     var getFilterName = function () {
         return self.model.name();
     }
-    var saveFilterIfNeeded = function () {
+    var saveFilterIfNeeded = function (callback) {
         if (self.model.isChanged()) {
-            self.model.saveFilter();
+            self.model.saveFilter(callback);
+        }
+        else if ($.isFunction(callback)) {
+            callback();
         }
     }
     var setMultiSelectionMode = function (mode) {
@@ -859,8 +940,7 @@
         saveFilterIfNeeded: saveFilterIfNeeded,
         openSaveAsDialogForSelectedDevices: self.model.openSaveAsDialogForSelectedDevices,
         saveFilterForSelectedDevices: self.model.saveFilterForSelectedDevices,
-        setMultiSelectionMode: setMultiSelectionMode,
-        util:self.util
+        setMultiSelectionMode: setMultiSelectionMode,        
     }
 }, [jQuery, resources]);
 

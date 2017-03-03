@@ -512,6 +512,15 @@ namespace GlobalResources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Building.
+        /// </summary>
+        public static string BuildingHeader {
+            get {
+                return ResourceManager.GetString("BuildingHeader", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to Invalid byte; expected a format like &apos;24&apos; (between 0 and 255).
         /// </summary>
         public static string byteCommandErrorMessage {
@@ -1066,6 +1075,15 @@ namespace GlobalResources {
         public static string Delete {
             get {
                 return ResourceManager.GetString("Delete", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Are you sure you want to delete this clause?.
+        /// </summary>
+        public static string DeleteClauseConfirmation {
+            get {
+                return ResourceManager.GetString("DeleteClauseConfirmation", resourceCulture);
             }
         }
         
@@ -1988,7 +2006,7 @@ namespace GlobalResources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Failed to save this filter because it it associated with jobs..
+        ///   Looks up a localized string similar to Failed to save this filter..
         /// </summary>
         public static string FailedToSaveFilter {
             get {
@@ -2123,11 +2141,29 @@ namespace GlobalResources {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Filter Name.
+        /// </summary>
+        public static string FilterName {
+            get {
+                return ResourceManager.GetString("FilterName", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to FILTER.
         /// </summary>
         public static string FilterNameHeader {
             get {
                 return ResourceManager.GetString("FilterNameHeader", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The filter name must be unique..
+        /// </summary>
+        public static string FilterNameMustBeUnique {
+            get {
+                return ResourceManager.GetString("FilterNameMustBeUnique", resourceCulture);
             }
         }
         
@@ -2389,6 +2425,15 @@ namespace GlobalResources {
         public static string FirmwareVersionMustBeLessThan200Characters {
             get {
                 return ResourceManager.GetString("FirmwareVersionMustBeLessThan200Characters", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to FwStatus.
+        /// </summary>
+        public static string FwStatusHeader {
+            get {
+                return ResourceManager.GetString("FwStatusHeader", resourceCulture);
             }
         }
         
@@ -3122,19 +3167,7 @@ namespace GlobalResources {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to Methods are extracted from device twin reported property SupportedMethods. Sample property:
-        ///&quot;SupportedMethods&quot;: {
-        ///  &quot;FirmwareUpdate_string&quot;: {
-        ///    &quot;Name&quot;: &quot;FirmwareUpdate&quot;,
-        ///    &quot;Description&quot;: &quot;Updates device Firmware. Use parameter &apos;FwPackageUri&apos; to specifiy the URI of the firmware file, e.g. https://iotrmassets.blob.core.windows.net/firmwares/FW20.bin&quot;,
-        ///    &quot;Parameters&quot;: {
-        ///      &quot;FwPackageUri&quot;: {
-        ///        &quot;Name&quot;: &quot;FwPackageUri&quot;,
-        ///        &quot;Type&quot;: &quot;string&quot;
-        ///      }
-        ///    }
-        ///  }
-        ///}.
+        ///   Looks up a localized string similar to Methods are extracted from a reserved reported property in device twin: SupportedMethods..
         /// </summary>
         public static string MethodHeader {
             get {
@@ -3706,6 +3739,15 @@ namespace GlobalResources {
         public static string PlatformNameMustBeLessThan200Characters {
             get {
                 return ResourceManager.GetString("PlatformNameMustBeLessThan200Characters", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Please name your filter..
+        /// </summary>
+        public static string PleaseNameYourFilter {
+            get {
+                return ResourceManager.GetString("PleaseNameYourFilter", resourceCulture);
             }
         }
         
@@ -5011,6 +5053,15 @@ namespace GlobalResources {
         public static string Temperature {
             get {
                 return ResourceManager.GetString("Temperature", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Temperature.
+        /// </summary>
+        public static string TemperatureHeader {
+            get {
+                return ResourceManager.GetString("TemperatureHeader", resourceCulture);
             }
         }
         

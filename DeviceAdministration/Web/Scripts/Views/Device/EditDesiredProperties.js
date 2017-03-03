@@ -15,6 +15,7 @@
         self.key = ko.observable(data.key);
         self.value = ko.mapping.fromJS(data.value);
         self.isDeleted = ko.observable(data.isDeleted);
+        self.isUserDefinedType = ko.observable(data.isUserDefinedType);
         self.dataType = ko.observable(data.dataType);
     }
 
@@ -28,6 +29,7 @@
                     "lastUpdated": ""
                 },
                 "isDeleted": false,
+                "isUserDefinedType": false,
                 "dataType": ""
             }
         ]
@@ -38,29 +40,37 @@
                     return ko.observable(false);
                 }
             },
-            'dataType': {
-                create: function (data) {
-                    var type = IoTApp.DeviceFilter.util.getDataType(data);
-                    return ko.observable(type);
-                }
-            },
         }
-
-        this.updateDataType = function (data) {
-            data.dataType(IoTApp.DeviceFilter.util.getDataType(data.value.value()));
-        };
 
         this.twinDataTypeOptions = ko.observableArray(resources.twinDataTypeOptions),
         this.properties = ko.mapping.fromJS(defaultData, mapping);
-        this.reported = ko.observableArray([]);
+        this.reported = ko.mapping.fromJS(defaultData, mapping);
+        this.oneItemLeft = ko.observable(true);
+        this.propertieslist = {};
+
         this.backButtonClicked = function () {
             location.href = resources.redirectUrl;
         }
-        this.propertieslist = {};
+
+        this.updateDataType = function (data) {
+            if (!data.isUserDefinedType()) {
+                data.dataType(IoTApp.Helpers.DataType.getDataType(data.value.value()));
+            }
+        };
 
         this.createEmptyPropertyIfNeeded = function (property) {
-            self.properties.push(new propertyModel({ "key": "", "value": { "value": "", "lastUpdated": "" }, "isDeleted": false, "dataType": resources.twinDataType.string }));
+            self.properties.push(new propertyModel({
+                "key": "", "value": { "value": "", "lastUpdated": "" }, "isDeleted": false, "isUserDefinedType": false, "dataType": resources.twinDataType.string
+            }));
+            self.oneItemLeft(false);
             return true;
+        }
+
+        this.remove = function (item) {
+            self.properties.remove(item);
+            if (self.properties().length <= 1) {
+                self.oneItemLeft(true);
+            }
         }
 
         this.makeproplist = function (elem, index, data) {
@@ -95,10 +105,12 @@
             if (desired.indexOf("desired.") == 0) {
                 desired = desired.slice(8, desired.length);
             }
-            for (var i = 0; i < this.reported().length; i++) {
-
-                if (this.reported()[i].key().toLowerCase().indexOf(desired.toLowerCase()) >= 0) {
-                    return this.reported()[i];
+            if (desired) {
+                var regex = new RegExp(desired + "$", "i");
+                for (var i = 0; i < this.reported().length; i++) {
+                    if (regex.test(this.reported()[i].key())) {
+                        return this.reported()[i];
+                    }
                 }
             }
         }
@@ -140,16 +152,23 @@
             type: 'GET',
             cache: false,
             success: function (result) {
-                ko.mapping.fromJS(result.data.reported,self.reported);
+                ko.mapping.fromJS(result.data.reported, self.reported);
 
                 //add 'isDeleted' field for model binding, default false
                 result.data.desired = $.map(result.data.desired, function (item) {
                     item.isDeleted = false;
-                    item.dataType = "";
+                    item.isUserDefinedType = true;
+                    item.dataType = IoTApp.Helpers.String.capitalizeFirstLetter(typeof (item.value.value));
                     return item;
                 });
 
                 ko.mapping.fromJS(result.data.desired, self.properties);
+                if (self.properties().length == 0) {
+                    self.properties.push(new propertyModel({ "key": "", "value": { "value": "", "lastUpdated": "" }, "isDeleted": false, "dataType": resources.twinDataType.string }));
+                }
+                if (self.properties().length == 1) {
+                    self.oneItemLeft(true);
+                }
             }
         });
     }

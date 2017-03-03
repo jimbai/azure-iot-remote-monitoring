@@ -9,6 +9,7 @@ using DeviceManagement.Infrustructure.Connectivity.Models.TerminalDevice;
 using GlobalResources;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Exceptions;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Factory;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.BusinessLogic;
@@ -64,6 +65,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         {
             ViewBag.FilterId = filterId;
             ViewBag.HasManageJobsPerm = PermsChecker.HasPermission(Permission.ManageJobs);
+            ViewBag.HasDeleteSuggestedClausePerm = PermsChecker.HasPermission(Permission.DeleteSuggestedClauses);
             ViewBag.IconBaseUrl = await _iconRepository.GetIconStorageUriPrefix();
             ViewBag.IconTagName = Constants.DeviceIconTagName;
 
@@ -151,7 +153,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                 while (true)
                 {
                     var random = BitConverter.ToUInt32(Guid.NewGuid().ToByteArray(), 0);
-                    string deviceId = $"SampleDevice_{random % 10000:d4}";
+                    string deviceId = $"CoolingSampleDevice_{random % 10000:d4}";
 
                     if (!await GetDeviceExistsAsync(deviceId))
                     {
@@ -354,7 +356,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         public async Task<ActionResult> DeleteDevice(string deviceId)
         {
             await _deviceLogic.RemoveDeviceAsync(deviceId);
-            return View("Index");
+            return null;
         }
 
         [RequirePermission(Permission.ViewDevices)]
@@ -409,8 +411,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                 unregisteredDeviceModel.DeviceType != null,
                 "unregisteredDeviceModel.DeviceType is a null reference.");
 
-            DeviceModel device = DeviceCreatorHelper.BuildDeviceStructure(unregisteredDeviceModel.DeviceId,
-                unregisteredDeviceModel.DeviceType.IsSimulatedDevice, unregisteredDeviceModel.Iccid);
+            DeviceModel device = DeviceCreatorHelper.BuildDeviceStructure(
+                unregisteredDeviceModel.DeviceId,
+                unregisteredDeviceModel.DeviceType.IsSimulatedDevice,
+                unregisteredDeviceModel.Iccid);
+            SampleDeviceFactory.AssignDefaultTags(device);
+            SampleDeviceFactory.AssignDefaultDesiredProperties(device);
 
             DeviceWithKeys addedDevice = await this._deviceLogic.AddDeviceAsync(device);
             return addedDevice;

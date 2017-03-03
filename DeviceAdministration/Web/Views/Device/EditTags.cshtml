@@ -24,9 +24,6 @@
                 {
                     @Html.AntiForgeryToken()
                     @Html.HiddenFor(m => m.DeviceId)
-                    <p>
-                        @Html.ValidationSummary(false)
-                    </p>
 
                     <fieldset class="edit_form">
                         <table class="values_editor" id="propertiesTable">
@@ -47,14 +44,14 @@
                                 <tr class="values_editor__group">
                                     <td>
                                         <input type="text" class="edit_form__texthalf edit_form__propertiesComboBox"
-                                               data-msg-regex="*"
-                                               data-rule-regex="^tags.\S+$"
-                                               data-msg-required="*"
-                                               data-rule-required="true"
-                                               data-bind="value: key, css:{edit_form__deleted : isDeleted()}, attr:{name: 'tagName' + $index(), id: 'tagName' + $index()}" />
+                                               data-msg-regex=" "
+                                               data-rule-regex="^tags\.\S+$"
+                                               data-rule-maxtwindepth ="5"
+                                               data-bind="value: key, disable: isUserDefinedType, css:{edit_form__deleted : isDeleted()}, attr:{name: 'tagName' + $index(), id: 'tagName' + $index()}" />
                                     </td>
                                     <td>
                                         <input type="text" class="edit_form__texthalf"
+                                               data-rule-maxbytelength="512"
                                                data-bind='textInput: value.value,event:{ keyup:$root.updateDataType($data) }, enable:!isDeleted() && key(), css:{edit_form__deleted : isDeleted()}' />
                                     </td>
                                     <td>
@@ -65,6 +62,7 @@
                                                value="true"
                                                data-bind='checked: isDeleted ,enable: key()' />
                                     </td>
+                                    <td><a class="edit_form__link" data-bind="ifnot:$root.oneItemLeft() || isUserDefinedType(), click:$root.remove"><small class="text_small">@Strings.Clear</small></a></td>
                                 </tr>
                             </tbody>
                         </table>
@@ -106,10 +104,16 @@
         ]
     }
 </script>
-<script type="text/javascript" src="~/Scripts/Views/Device/DeviceFilter.js"></script>
-<script type="text/javascript" src="~/Scripts/Views/Device/EditTags.js"></script>
+<script type="text/javascript" src="~/Scripts/Views/Device/EditTags.js?ver=@Constants.JSVersion"></script>
 <script type="text/javascript">
+
     $(document).ready(function () {
+        jQuery.validator.addMethod("maxbytelength", function (value, element, params) {
+            return this.optional(element) || byteCount(value) <= params
+        }, "");
+        jQuery.validator.addMethod("maxtwindepth", function (value, element, params) {
+            return this.optional(element) || value.match(/\./gi).length <= params
+        }, "");
         IoTApp.EditTags.init("@Model.DeviceId");
     });
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading.Tasks;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
@@ -30,8 +31,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Simulator.WebJob
             ITelemetryFactory telemetryFactory, IConfigurationProvider configurationProvider)
             : base(logger, transportFactory, telemetryFactory, configurationProvider)
         {
-            _desiredPropertyUdateHandlers.Add(SetPointTempPropertyName, OnSetPointTempUpdate);
-            _desiredPropertyUdateHandlers.Add(TelemetryIntervalPropertyName, OnTelemetryIntervalUpdate);
+            _desiredPropertyUpdateHandlers.Add(TemperatureMeanValuePropertyName, OnTemperatureMeanValueUpdate);
+            _desiredPropertyUpdateHandlers.Add(TelemetryIntervalPropertyName, OnTelemetryIntervalUpdate);
         }
 
         /// <summary>
@@ -78,7 +79,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Simulator.WebJob
         public void ChangeSetPointTemp(double setPointTemp)
         {
             var remoteMonitorTelemetry = (RemoteMonitorTelemetry)_telemetryController;
-            remoteMonitorTelemetry.SetPointTemperature = setPointTemp;
+            remoteMonitorTelemetry.TemperatureMeanValue = setPointTemp;
             Logger.LogInfo("Device {0} temperature changed to {1}", DeviceID, setPointTemp);
         }
 
@@ -107,7 +108,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Simulator.WebJob
             return BuildMethodRespose(methodRequest.DataAsJson);
         }
 
-        public async Task<MethodResponse> OnFirmwareUpdate(MethodRequest methodRequest, object userContext)
+        public async Task<MethodResponse> OnInitiateFirmwareUpdate(MethodRequest methodRequest, object userContext)
         {
             if (_deviceManagementTask != null && !_deviceManagementTask.IsCompleted)
             {
@@ -120,7 +121,17 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Simulator.WebJob
             try
             {
                 var operation = new FirmwareUpdate(methodRequest);
-                _deviceManagementTask = operation.Run(Transport);
+                _deviceManagementTask = operation.Run(Transport).ContinueWith(async task =>
+                {
+                    // after firmware completed, we reset telemetry for demo purpose
+                    var telemetry = _telemetryController as ITelemetryWithTemperatureMeanValue;
+                    if (telemetry != null)
+                    {
+                        telemetry.TemperatureMeanValue = 34.5;
+                    }
+
+                    await UpdateReportedTemperatureMeanValue();
+                });
 
                 return await Task.FromResult(BuildMethodRespose(new
                 {
@@ -179,16 +190,24 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Simulator.WebJob
 
         private async Task RebootAsync()
         {
-            const string LogPath = "Method.Reboot.Log";
-
-            await SetReportedPropertyAsync(LogPath, "Rebooting");
-
-            await Task.Delay(TimeSpan.FromSeconds(10));
+            await SetReportedPropertyAsync("Method.Reboot", null);
+            var watch = Stopwatch.StartNew();
 
             await SetReportedPropertyAsync(new Dictionary<string, dynamic>
             {
-                { LogPath, "Rebooted" },
-                { StartupTimePropertyName, DateTime.UtcNow.ToString() }
+                { LastRebootTimePropertyName, DateTime.UtcNow.ToString() },
+                { "Method.Reboot.Status", "Running" },
+                { "Method.Reboot.LastUpdate", DateTime.UtcNow.ToString() }
+            });
+
+            await Task.Delay(TimeSpan.FromSeconds(20));
+
+            await SetReportedPropertyAsync(new Dictionary<string, dynamic>
+            {
+                { StartupTimePropertyName, DateTime.UtcNow.ToString() },
+                { "Method.Reboot.Status", "Complete" },
+                { "Method.Reboot.LastUpdate", DateTime.UtcNow.ToString() },
+                { "Method.Reboot.Duration-s", (int)watch.Elapsed.TotalSeconds }
             });
         }
 
@@ -204,18 +223,34 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Simulator.WebJob
 
         private async Task FactoryResetAsync()
         {
-            const string LogPath = "Method.FactoryReset.Log";
-
-            await SetReportedPropertyAsync(LogPath, "Reseting");
-
-            await Task.Delay(TimeSpan.FromSeconds(10));
+            await SetReportedPropertyAsync("Method.FactoryReset", null);
+            var watch = Stopwatch.StartNew();
 
             await SetReportedPropertyAsync(new Dictionary<string, dynamic>
             {
-                { LogPath, "Reset" },
+                { LastFactoryResetTimePropertyName, DateTime.UtcNow.ToString() },
+                { "Method.FactoryReset.Status", "Running" },
+                { "Method.FactoryReset.LastUpdate", DateTime.UtcNow.ToString() }
+            });
+
+            await Task.Delay(TimeSpan.FromSeconds(10));
+
+            var factoryResetSupport = _telemetryController as ITelemetryFactoryResetSupport;
+            if (factoryResetSupport != null)
+            {
+                factoryResetSupport.FactoryReset();
+                await UpdateReportedTemperatureMeanValue();
+                await UpdateReportedTelemetryInterval();
+            }
+
+            await SetReportedPropertyAsync(new Dictionary<string, dynamic>
+            {
                 { StartupTimePropertyName, DateTime.UtcNow.ToString() },
                 { FirmwareVersionPropertyName, "1.0" },
                 { ConfigurationVersionPropertyName, null },
+                { "Method.FactoryReset.Status", "Complete" },
+                { "Method.FactoryReset.LastUpdate", DateTime.UtcNow.ToString() },
+                { "Method.FactoryReset.Duration-s", (int)watch.Elapsed.TotalSeconds }
             });
         }
 
@@ -230,6 +265,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Simulator.WebJob
         public async Task<MethodResponse> OnStartTelemetry(MethodRequest methodRequest, object userContext)
         {
             bool lastStatus = StartTelemetryData();
+            await UpdateReportedTelemetryInterval();
 
             return await Task.FromResult(BuildMethodRespose(new
             {
@@ -240,6 +276,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Simulator.WebJob
         public async Task<MethodResponse> OnStopTelemetry(MethodRequest methodRequest, object userContext)
         {
             bool lastStatus = StopTelemetryData();
+            await UpdateReportedTelemetryInterval();
 
             return await Task.FromResult(BuildMethodRespose(new
             {
@@ -257,37 +294,49 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Simulator.WebJob
             return BuildMethodRespose(JsonConvert.SerializeObject(response), status);
         }
 
-        private async Task SetReportedPropertyAsync(string name, dynamic value)
+        protected async Task OnTemperatureMeanValueUpdate(object value)
         {
-            var collection = new TwinCollection();
-            TwinCollectionExtension.Set(collection, name, value);
-            await Transport.UpdateReportedPropertiesAsync(collection);
-        }
+            // When set the temperature we clean up the firmware update status for demo purpose.
+            var clear = new TwinCollection();
+            clear.Set(FirmwareUpdate.ReportPrefix, null);
+            await Transport.UpdateReportedPropertiesAsync(clear);
 
-        private async Task SetReportedPropertyAsync(Dictionary<string, dynamic> pairs)
-        {
-            var collection = new TwinCollection();
-            foreach (var pair in pairs)
+            var telemetry = _telemetryController as ITelemetryWithTemperatureMeanValue;
+            if (telemetry != null)
             {
-                TwinCollectionExtension.Set(collection, pair.Key, pair.Value);
+                telemetry.TemperatureMeanValue = Convert.ToDouble(value);
             }
-            await Transport.UpdateReportedPropertiesAsync(collection);
+
+            await UpdateReportedTemperatureMeanValue();
         }
 
-        protected async Task OnSetPointTempUpdate(object value)
+        protected async Task UpdateReportedTemperatureMeanValue()
         {
-            var telemetry = _telemetryController as ITelemetryWithSetPointTemperature;
-            telemetry.SetPointTemperature = Convert.ToDouble(value);
-
-            await SetReportedPropertyAsync(SetPointTempPropertyName, telemetry.SetPointTemperature);
+            var telemetry = _telemetryController as ITelemetryWithTemperatureMeanValue;
+            if (telemetry != null)
+            {
+                await SetReportedPropertyAsync(TemperatureMeanValuePropertyName, telemetry.TemperatureMeanValue);
+            }
         }
 
         protected async Task OnTelemetryIntervalUpdate(object value)
         {
             var telemetry = _telemetryController as ITelemetryWithInterval;
-            telemetry.TelemetryIntervalInSeconds = Convert.ToInt32(value);
+            if (telemetry != null)
+            {
+                telemetry.TelemetryIntervalInSeconds = Convert.ToUInt32(value);
+            }
 
-            await SetReportedPropertyAsync(TelemetryIntervalPropertyName, telemetry.TelemetryIntervalInSeconds);
+            await UpdateReportedTelemetryInterval();
+        }
+
+        protected async Task UpdateReportedTelemetryInterval()
+        {
+            var telemetry = _telemetryController as ITelemetryWithInterval;
+            if (telemetry != null)
+            {
+                await SetReportedPropertyAsync(TelemetryIntervalPropertyName, telemetry.TelemetryIntervalInSeconds);
+            }
         }
     }
 }

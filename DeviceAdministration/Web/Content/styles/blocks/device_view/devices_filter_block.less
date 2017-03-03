@@ -118,7 +118,6 @@
     color: @anchor-color;
     border: 1px solid transparent;
     font-size: 16px;
-    width: 90px;
     padding: 0 1em;
     height: 30px;
     cursor: pointer;
@@ -126,17 +125,16 @@
 }
 
 .filter_panel_type_select_img {
-    position:absolute;
-    height:18px;
-    width:18px;
-    right:4px;
-    top:4px;
+    height: 18px;
+    width: 18px;
+    vertical-align: middle;
+    margin-bottom: 4px;
 }
 
 .filter_panel_clauses {
     overflow:auto;
     min-height: 42px;
-    margin:10px 0px 15px 0px;
+    margin:2px 0px 20px 0px;
 }
 
 .filter_panel_clause {
@@ -145,7 +143,7 @@
     background-color: @background-color;
     color: @filter-panel-text-color;
     border: 1px solid @filter-panel-text-color;
-    margin: 4px 8px 4px 0px;
+    margin: 12px 12px 0px 0px;
     padding: 5px;
     height: 22px;
     cursor: pointer;
@@ -167,13 +165,18 @@
     text-overflow: ellipsis;
 }
 
-.filter_panel_clause_delete_img {
+.filter_panel_clause_right_top_img {
     display: none;
-    top: 4px; 
-    right: 2px; 
-    position: absolute; 
-    background-color: @background-color;
+    position:absolute;
+    right: -9px;
+    top: -9px;
+    width: 20px;
+    height: 20px;
+}
+
+.filter_panel_clause_delete_img {
     cursor: pointer;
+    .filter_panel_clause_right_top_img;
 }
 
 .filter_panel_clause:hover:not(.checked) .filter_panel_clause_delete_img {
@@ -185,12 +188,14 @@
     color: @button-border-color;
 }
 
-.filter_panel_clause.checked::before {
-    content: url('/Content/img/clausechecked.svg');
-    position:absolute;
-    right: -10px;
-    top: -10px;
+.filter_panel_clause.checked .filter_panel_clause_right_top_img {
+    display: block;
 }
+
+/*.filter_panel_clause.checked::before {
+    content: url('/Content/img/clausechecked2.svg');
+    .filter_panel_clause_right_top;
+}*/
 
 .filter_panel_advanced_textarea {
     margin:10px;
@@ -226,6 +231,17 @@
     margin: 5px 0px 5px 0px;
 }
 
+.filter_panel_name_text {
+    border: 1px solid @form-textbox-border;
+    background-color: @background-color;
+    box-sizing: content-box;
+    width: 100%;
+    height: 30px;
+    padding: 0px 5px 0px 5px;
+    max-width: 350px;
+    margin: 5px 0px 20px 0px;
+}
+
 .filter_panel_text {
     border: 1px solid @form-textbox-border;
     background-color: @background-color;
@@ -255,6 +271,7 @@
     font-weight:normal;
     font-size: 13px;
     display: inline-block;
+    text-transform: uppercase;
 }
 
 .filter_panel_clause_edit_row {
@@ -297,7 +314,7 @@
     flex:none;
     width: 6.45em;
     .filter_panel_clause_edit_row_cell;
-    padding-right:10px;
+    padding-right:0px;
 }
 
 .filter_panel_buttons {

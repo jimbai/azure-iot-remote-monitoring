@@ -759,7 +759,8 @@ nav .selected {
 .edit_form__labelsmall {
   color: gray;
   font-size: 0.6em;
-  display: block;
+  margin-left: 15px;
+  display: inline-block;
   line-height: 100%;
 }
 .edit_form__labelbutton {
@@ -874,6 +875,7 @@ nav .selected {
   box-sizing: content-box;
 }
 .edit_form__link {
+  min-width: 35px;
   font-size: 0.8em;
 }
 .edit_form_control_last {
@@ -1134,19 +1136,19 @@ table#alertHistoryTable tr.selectedAlert {
   background-color: lightblue;
 }
 .dashboard_alert_history--static_height {
-  height: 363px;
+  height: 263px;
 }
 .dashboard_alert_history--dynamic_height {
-  height: 417px;
+  height: 317px;
 }
 @media screen and (max-width: 1100px) {
   .dashboard_alert_history--dynamic_height {
-    height: 563px;
+    height: 463px;
   }
 }
 @media screen and (min-width: 1500px) {
   .dashboard_alert_history--dynamic_height {
-    height: 271px;
+    height: 171px;
   }
 }
 .dashboard_alert_history__alertHeader {
@@ -1167,7 +1169,7 @@ table#alertHistoryTable tr.selectedAlert {
 }
 .dashboard_telemetry_history {
   width: 100%;
-  height: 732px;
+  height: 715px;
   padding: 6px 6px 6px 6px;
   margin-bottom: 12px;
   background-color: white;
@@ -1228,7 +1230,7 @@ table#alertHistoryTable tr.selectedAlert {
 }
 .dashboard_telemetry_history_summary__dashboard_telemetry_history_gauge {
   background-color: white;
-  height: 172px;
+  height: 120px;
   width: 33.333%;
   box-sizing: border-box;
   padding: 6px;
@@ -1270,7 +1272,7 @@ table#alertHistoryTable tr.selectedAlert {
   padding: 6px;
   display: inline-block;
   float: left;
-  height: 90px;
+  height: 120px;
   border-right: 6px solid #f2f2f2;
   border-left: 6px solid #f2f2f2;
 }
@@ -1290,7 +1292,7 @@ table#alertHistoryTable tr.selectedAlert {
   font-size: 2em;
   text-align: center;
   color: #333333;
-  padding-top: 0.2em;
+  padding-top: 0.6em;
 }
 .device_list_toolbar {
   float: left;
@@ -1396,23 +1398,21 @@ table#alertHistoryTable tr.selectedAlert {
   color: #1c9dd7;
   border: 1px solid transparent;
   font-size: 16px;
-  width: 90px;
   padding: 0 1em;
   height: 30px;
   cursor: pointer;
   margin-left: -18px;
 }
 .filter_panel_type_select_img {
-  position: absolute;
   height: 18px;
   width: 18px;
-  right: 4px;
-  top: 4px;
+  vertical-align: middle;
+  margin-bottom: 4px;
 }
 .filter_panel_clauses {
   overflow: auto;
   min-height: 42px;
-  margin: 10px 0px 15px 0px;
+  margin: 2px 0px 20px 0px;
 }
 .filter_panel_clause {
   display: block;
@@ -1420,7 +1420,7 @@ table#alertHistoryTable tr.selectedAlert {
   background-color: white;
   color: gray;
   border: 1px solid gray;
-  margin: 4px 8px 4px 0px;
+  margin: 12px 12px 0px 0px;
   padding: 5px;
   height: 22px;
   cursor: pointer;
@@ -1439,13 +1439,22 @@ table#alertHistoryTable tr.selectedAlert {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.filter_panel_clause_delete_img {
+.filter_panel_clause_right_top_img {
   display: none;
-  top: 4px;
-  right: 2px;
   position: absolute;
-  background-color: white;
+  right: -9px;
+  top: -9px;
+  width: 20px;
+  height: 20px;
+}
+.filter_panel_clause_delete_img {
   cursor: pointer;
+  display: none;
+  position: absolute;
+  right: -9px;
+  top: -9px;
+  width: 20px;
+  height: 20px;
 }
 .filter_panel_clause:hover:not(.checked) .filter_panel_clause_delete_img {
   display: block;
@@ -1454,12 +1463,14 @@ table#alertHistoryTable tr.selectedAlert {
   border-color: #1c9dd7;
   color: #1c9dd7;
 }
-.filter_panel_clause.checked::before {
-  content: url('/Content/img/clausechecked.svg');
-  position: absolute;
-  right: -10px;
-  top: -10px;
+.filter_panel_clause.checked .filter_panel_clause_right_top_img {
+  display: block;
 }
+/*.filter_panel_clause.checked::before {
+    content: url('/Content/img/clausechecked2.svg');
+    .filter_panel_clause_right_top;
+}*/
+
 .filter_panel_advanced_textarea {
   margin: 10px;
   width: calc(100% - 20px);
@@ -1489,6 +1500,16 @@ table#alertHistoryTable tr.selectedAlert {
   display: block;
   margin: 5px 0px 5px 0px;
 }
+.filter_panel_name_text {
+  border: 1px solid #999999;
+  background-color: white;
+  box-sizing: content-box;
+  width: 100%;
+  height: 30px;
+  padding: 0px 5px 0px 5px;
+  max-width: 350px;
+  margin: 5px 0px 20px 0px;
+}
 .filter_panel_text {
   border: 1px solid #999999;
   background-color: white;
@@ -1515,6 +1536,7 @@ table#alertHistoryTable tr.selectedAlert {
   font-weight: normal;
   font-size: 13px;
   display: inline-block;
+  text-transform: uppercase;
 }
 .filter_panel_clause_edit_row {
   display: -webkit-flex;
@@ -1550,7 +1572,7 @@ table#alertHistoryTable tr.selectedAlert {
   flex: none;
   width: 6.45em;
   padding: 2px 14px 2px 0px;
-  padding-right: 10px;
+  padding-right: 0px;
 }
 .filter_panel_buttons {
   height: 32px;
@@ -1979,8 +2001,14 @@ table#alertHistoryTable tr.selectedAlert {
 }
 .details_grid_header_image_edit {
   position: absolute;
-  right: 10px;
-  bottom: 10px;
+  right: 8px;
+  bottom: 8px;
+  width: 33px;
+  height: 33px;
+  background-image: url("/Content/img/edit_device_image.svg");
+}
+.details_grid_header_image_edit:hover {
+  background-image: url("/Content/img/edit_device_image_hover.svg");
 }
 .details_grid_header_actions {
   float: left;
@@ -2069,6 +2097,9 @@ table#alertHistoryTable tr.selectedAlert {
   -webkit-animation: load5 1.1s infinite ease;
   animation: load5 1.1s infinite ease;
 }
+.grid_subhead_detail_label_job_property {
+  text-transform: uppercase;
+}
 .details_grid_job_method_payload {
   display: inline-flex;
   font-size: 0.75em;
@@ -2085,12 +2116,15 @@ table#alertHistoryTable tr.selectedAlert {
   padding-bottom: 1em;
 }
 .job_result_section__twin_list {
-  font-size: 0.75em;
+  font-size: 1em;
   list-style-type: none;
   columns: 2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.job_result_section__twin_list_crossline {
+  text-decoration: line-through;
 }
 .job_result_section__device_list {
   display: inline-flex;
@@ -2131,12 +2165,6 @@ table#alertHistoryTable tr.selectedAlert {
 }
 .job_result_status_filter_selected {
   border-bottom: 1px solid;
-}
-.job_result_payload {
-  max-width: 300px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 #jobResultDialog .dialog_dialog {
   width: 80%;

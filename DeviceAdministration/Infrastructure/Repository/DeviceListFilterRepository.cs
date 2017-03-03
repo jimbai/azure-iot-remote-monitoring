@@ -20,16 +20,51 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         private readonly IAzureTableStorageClient _clauseTableStorageClient;
         private readonly string _filterTableName = "FilterList";
         private readonly string _clauseTableName = "SuggestedClausesList";
+
+        private static object _initializeLock = new object();
         private static bool DefaultFilterInitialized = false;
-        public static readonly DeviceListFilter DefaultDeviceListFilter = new DeviceListFilter
+
+        private static readonly DeviceListFilter[] _builtInFilters = new DeviceListFilter[]
         {
-            Id = Guid.Empty.ToString(),
-            Name = "All Devices",
-            Clauses = new List<Clause>(),
-            AdvancedClause = null,
-            IsAdvanced = false,
-            IsTemporary = false,
+            new DeviceListFilter
+            {
+                Id = "00000000-0000-0000-0000-000000000000",
+                Name = "All Devices",
+                Clauses = new List<Clause>()
+            },
+            new DeviceListFilter
+            {
+                Id = "00000000-0000-0000-0000-000000000001",
+                Name = "Unhealthy devices",
+                Clauses = new List<Clause>
+                {
+                    new Clause
+                    {
+                        ColumnName = "reported.Config.TemperatureMeanValue",
+                        ClauseType = ClauseType.GT,
+                        ClauseValue = "60",
+                        ClauseDataType = TwinDataType.Number
+                    }
+                }
+            },
+            new DeviceListFilter
+            {
+                Id = "00000000-0000-0000-0000-000000000002",
+                Name = "Old firmware devices",
+                Clauses = new List<Clause>
+                {
+                    new Clause
+                    {
+                        ColumnName = "reported.System.FirmwareVersion",
+                        ClauseType = ClauseType.LT,
+                        ClauseValue = "2.0",
+                        ClauseDataType = TwinDataType.String
+                    }
+                }
+            },
         };
+
+        public static readonly DeviceListFilter DefaultDeviceListFilter = _builtInFilters.First();
 
         public DeviceListFilterRepository(IConfigurationProvider configurationProvider, IAzureTableStorageClientFactory filterTableStorageClientFactory, IAzureTableStorageClientFactory clausesTableStorageClientFactory)
         {
@@ -38,15 +73,33 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             _filterTableStorageClient = filterTableStorageClientFactory.CreateClient(_storageAccountConnectionString, filterTableName);
             string clauseTableName = configurationProvider.GetConfigurationSettingValueOrDefault("SuggestedClauseTableName", _clauseTableName);
             _clauseTableStorageClient = clausesTableStorageClientFactory.CreateClient(_storageAccountConnectionString, clauseTableName);
-            InitializeDefaultFilter();
+
+            var task = InitializeDefaultFilter();
         }
 
         public async Task InitializeDefaultFilter()
         {
-            if (!DefaultFilterInitialized)
+            // Ensure initializing will be performed only one time
+            lock (_initializeLock)
             {
-                DefaultFilterInitialized = true;
-                await _filterTableStorageClient.DoTableInsertOrReplaceAsync(new DeviceListFilterTableEntity(DefaultDeviceListFilter) { ETag = "*" }, BuildFilterModelFromEntity);
+                if (!DefaultFilterInitialized)
+                {
+                    DefaultFilterInitialized = true;
+                }
+                else
+                {
+                    return;
+                }
+            }
+
+            foreach (var filter in _builtInFilters)
+            {
+                await _filterTableStorageClient.DoTableInsertOrReplaceAsync(
+                    new DeviceListFilterTableEntity(filter)
+                    {
+                        ETag = "*"
+                    },
+                    BuildFilterModelFromEntity);
             }
         }
 
@@ -75,6 +128,22 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             else
             {
                 if (!force) return oldFilter;
+            }
+
+            if (filter.Name != Constants.UnnamedFilterName)
+            {
+                var query = new TableQuery<DeviceListFilterTableEntity>().Where(
+                    TableQuery.CombineFilters(
+                        TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.NotEqual, filter.Id),
+                        TableOperators.And,
+                        TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, filter.Name)
+                    )
+                );
+                var entities = await _filterTableStorageClient.ExecuteQueryAsync(query);
+                if (entities.Any())
+                {
+                    throw new FilterDuplicatedNameException(filter.Id, filter.Name);
+                }
             }
 
             DeviceListFilterTableEntity newEntity = new DeviceListFilterTableEntity(filter) { ETag = "*" };
@@ -125,14 +194,15 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             TableQuery<DeviceListFilterTableEntity> query = new TableQuery<DeviceListFilterTableEntity>();
             var entities = await _filterTableStorageClient.ExecuteQueryAsync(query);
             // replace the timestamp of default filter with current time so that it is always sorted at top of filter list.
-            var ordered = entities.Where(e => !excludeTemporary || !e.IsTemporary).Select(e =>
-            {
-                if (e.Id.Equals(DefaultDeviceListFilter.Id))
+            var ordered = entities.Where(e => !Constants.UnnamedFilterName.Equals(e.Name.Trim(), StringComparison.InvariantCultureIgnoreCase) && (!excludeTemporary || !e.IsTemporary))
+                .Select(e =>
                 {
-                    e.Timestamp = DateTimeOffset.Now;
-                }
-                return e;
-            }).OrderByDescending(e => e.Timestamp);
+                    if (e.Id.Equals(DefaultDeviceListFilter.Id))
+                    {
+                        e.Timestamp = DateTimeOffset.Now;
+                    }
+                    return e;
+                }).OrderByDescending(e => e.Timestamp);
             if (Max > 0)
             {
                 return ordered.Take(Max).Select(e => BuildFilterModelFromEntity(e));
@@ -147,7 +217,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         {
             TableQuery<DeviceListFilterTableEntity> query = new TableQuery<DeviceListFilterTableEntity>();
             var entities = await _filterTableStorageClient.ExecuteQueryAsync(query);
-            var ordered = entities.Where(e => !excludeTemporary || !e.IsTemporary).OrderBy(e => e.Name);
+            var ordered = entities.Where(e => !Constants.UnnamedFilterName.Equals(e.Name.Trim(), StringComparison.InvariantCultureIgnoreCase) && (!excludeTemporary || !e.IsTemporary))
+                .OrderBy(e => e.Name);
             if (take > 0)
             {
                 return ordered.Skip(skip).Take(take).Select(e => BuildFilterModelFromEntity(e));
@@ -268,11 +339,23 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             {
                 clauseType = ClauseType.EQ;
             }
+
+            TwinDataType clauseDataType;
+            try
+            {
+                Enum.TryParse(entity.ClauseDataType, out clauseDataType);
+            }
+            catch
+            {
+                clauseDataType = TwinDataType.String;
+            }
+
             return new Clause
             {
                 ColumnName = entity.ColumnName,
                 ClauseType = clauseType,
-                ClauseValue = entity.ClauseValue
+                ClauseValue = entity.ClauseValue,
+                ClauseDataType = clauseDataType,
             };
         }
     }

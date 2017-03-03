@@ -13,6 +13,7 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Mode
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Security;
 using Microsoft.Azure.Devices.Shared;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Controllers
 {
@@ -48,14 +49,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         {
             var jobResponse = await _iotHubDeviceManager.GetJobResponseByJobIdAsync(jobId);
 
-            var result = new DeviceJobModel(jobResponse);
-            var t = await GetJobDetailsAsync(result);
-            result.JobName = t.Item1;
-            result.FilterId = t.Item2;
-            result.FilterName = t.Item3;
-            result.OperationType = t.Item4;
+            var job = new DeviceJobModel(jobResponse);
+            await AddMoreDetailsToJobAsync(job);
 
-            return PartialView("_JobProperties", result);
+            return PartialView("_JobProperties", job);
         }
 
         [RequirePermission(Permission.ViewJobs)]
@@ -115,18 +112,22 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                         OriginalJobId = jobId,
                         DesiredProperties = twin.Properties.Desired.AsEnumerableFlatten().Select(p =>
                         {
+                            Newtonsoft.Json.Linq.JTokenType valuetype = p.Value.Value.Type;
                             return new DesiredPropetiesEditViewModel
                             {
-                                PropertyName = p.Key,
+                                PropertyName = $"desired.{p.Key}",
                                 PropertyValue = p.Value.Value.ToString(),
+                                DataType = convertToTwinDataType(valuetype)
                             };
                         }).ToList(),
                         Tags = twin.Tags.AsEnumerableFlatten().Select(t =>
                         {
+                            Newtonsoft.Json.Linq.JTokenType valuetype = t.Value.Value.Type;
                             return new TagsEditViewModel
                             {
-                                TagName = t.Key,
+                                TagName = $"tags.{t.Key}",
                                 TagValue = t.Value.Value.ToString(),
+                                DataType = convertToTwinDataType(valuetype)
                             };
                         }).ToList(),
                     });
@@ -175,8 +176,9 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
             });
         }
 
-        [RequirePermission(Permission.ManageJobs)]
         [HttpPost]
+        [RequirePermission(Permission.ManageJobs)]
+        [ValidateAntiForgeryToken]
         public async Task<ActionResult> ScheduleTwinUpdate(ScheduleTwinUpdateModel model)
         {
             var twin = new Twin();
@@ -189,7 +191,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                 }
                 else
                 {
-                    TwinExtension.Set(twin, key, getDyanmicValue(tagModel.DataType, tagModel.TagValue));                  
+                    TwinExtension.Set(twin, key, getDyanmicValue(tagModel.DataType, tagModel.TagValue));
                 }
                 await _nameCacheLogic.AddNameAsync(tagModel.TagName);
             }
@@ -203,7 +205,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                 }
                 else
                 {
-                    TwinExtension.Set(twin, key, getDyanmicValue(propertyModel.DataType, propertyModel.PropertyValue));                                     
+                    TwinExtension.Set(twin, key, getDyanmicValue(propertyModel.DataType, propertyModel.PropertyValue));
                 }
                 await _nameCacheLogic.AddNameAsync(propertyModel.PropertyName);
             }
@@ -225,8 +227,9 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
             return RedirectToAction("Index", "Job", new { jobId = jobId });
         }
 
-        [RequirePermission(Permission.ManageJobs)]
         [HttpPost]
+        [RequirePermission(Permission.ManageJobs)]
+        [ValidateAntiForgeryToken]
         public async Task<ActionResult> ScheduleIconUpdate(ScheduleTwinUpdateModel model)
         {
             var twin = new Twin() { ETag = "*" };
@@ -266,13 +269,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
             });
         }
 
-        [RequirePermission(Permission.ManageJobs)]
         [HttpPost]
+        [RequirePermission(Permission.ManageJobs)]
+        [ValidateAntiForgeryToken]
         public async Task<ActionResult> ScheduleDeviceMethod(ScheduleDeviceMethodModel model)
         {
             string methodName = model.MethodName.Split('(').First();
 
-            var parameters = model.Parameters?.ToDictionary(p => p.ParameterName, p => getDyanmicValue(p.Type,p.ParameterValue)) ?? new Dictionary<string, dynamic>();
+            var parameters = model.Parameters?.ToDictionary(p => p.ParameterName, p => getDyanmicValue(p.Type, p.ParameterValue)) ?? new Dictionary<string, dynamic>();
             string payload = JsonConvert.SerializeObject(parameters);
 
             var deviceListFilter = await GetFilterById(model.FilterId);
@@ -291,14 +295,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
 
             return RedirectToAction("Index", "Job", new { jobId = jobId });
         }
-        
-        private dynamic getDyanmicValue (TwinDataType type, dynamic value)
+
+        private dynamic getDyanmicValue(TwinDataType type, dynamic value)
         {
             switch (type)
             {
                 case Infrastructure.Models.TwinDataType.String:
                     string valueString = value.ToString();
-                    return valueString as dynamic;                    
+                    return valueString as dynamic;
                 case Infrastructure.Models.TwinDataType.Number:
                     int valueInt;
                     float valuefloat;
@@ -313,7 +317,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                     else
                     {
                         return value as string;
-                    }                    
+                    }
                 case Infrastructure.Models.TwinDataType.Boolean:
                     bool valueBool;
                     if (bool.TryParse(value.ToString(), out valueBool))
@@ -328,10 +332,17 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
             }
         }
 
-        private async Task<Tuple<string, string, string, string>> GetJobDetailsAsync(DeviceJobModel job)
+        private TwinDataType convertToTwinDataType(JTokenType valuetype)
+        {
+            return valuetype.HasFlag(Newtonsoft.Json.Linq.JTokenType.Float & Newtonsoft.Json.Linq.JTokenType.Integer) ? TwinDataType.Number
+                    : valuetype.HasFlag(Newtonsoft.Json.Linq.JTokenType.Boolean) ? TwinDataType.Boolean
+                    : TwinDataType.String;
+        }
+
+        private async Task AddMoreDetailsToJobAsync(DeviceJobModel job)
         {
             Task<JobRepositoryModel> queryJobTask = _jobRepository.QueryByJobIDAsync(job.JobId);
-            return await DeviceJobHelper.GetJobDetailsAsync(job, queryJobTask);
+            await DeviceJobHelper.AddMoreDetailsToJobAsync(job, queryJobTask);
         }
 
         private async Task<DeviceListFilter> GetFilterById(string filterId)

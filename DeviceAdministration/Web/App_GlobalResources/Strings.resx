@@ -946,7 +946,7 @@
   </data>
   <data name="NumberOfDevicesHeader" xml:space="preserve">
     <value>No. of Devices</value>
-    <comment>Table column header.</comment>
+    <comment>Table column header. “No. of Devices” means: “the Number of Devices”. It means the device count.</comment>
   </data>
   <data name="sbyteCommandErrorMessage" xml:space="preserve">
     <value>Invalid SByte; expected a format like '-43' or '12' (between -128 and 127)</value>
@@ -1922,7 +1922,7 @@
     <comment>Error message.</comment>
   </data>
   <data name="FailedToSaveFilter" xml:space="preserve">
-    <value>Failed to save this filter because it it associated with jobs.</value>
+    <value>Failed to save this filter.</value>
     <comment>Error message.</comment>
   </data>
   <data name="SearchTypeFilters" xml:space="preserve">
@@ -2437,19 +2437,7 @@
     <comment>Tooltip</comment>
   </data>
   <data name="MethodHeader" xml:space="preserve">
-    <value>Methods are extracted from device twin reported property SupportedMethods. Sample property:
-"SupportedMethods": {
-  "FirmwareUpdate_string": {
-    "Name": "FirmwareUpdate",
-    "Description": "Updates device Firmware. Use parameter 'FwPackageUri' to specifiy the URI of the firmware file, e.g. https://iotrmassets.blob.core.windows.net/firmwares/FW20.bin",
-    "Parameters": {
-      "FwPackageUri": {
-        "Name": "FwPackageUri",
-        "Type": "string"
-      }
-    }
-  }
-}</value>
+    <value>Methods are extracted from a reserved reported property in device twin: SupportedMethods.</value>
     <comment>Tooltip</comment>
   </data>
   <data name="LoadDefaultConfirmation" xml:space="preserve">
@@ -2491,5 +2479,33 @@
   <data name="StringLabel" xml:space="preserve">
     <value>String</value>
     <comment>Label.</comment>
+  </data>
+  <data name="DeleteClauseConfirmation" xml:space="preserve">
+    <value>Are you sure you want to delete this clause?</value>
+    <comment>Confirmation message.</comment>
+  </data>
+  <data name="FilterName" xml:space="preserve">
+    <value>Filter Name</value>
+    <comment>Input label.</comment>
+  </data>
+  <data name="FwStatusHeader" xml:space="preserve">
+    <value>FwStatus</value>
+    <comment>Table column header.</comment>
+  </data>
+  <data name="TemperatureHeader" xml:space="preserve">
+    <value>Temperature</value>
+    <comment>Table column header.</comment>
+  </data>
+  <data name="BuildingHeader" xml:space="preserve">
+    <value>Building</value>
+    <comment>Table column header.</comment>
+  </data>
+  <data name="PleaseNameYourFilter" xml:space="preserve">
+    <value>Please name your filter.</value>
+    <comment>Error message.</comment>
+  </data>
+  <data name="FilterNameMustBeUnique" xml:space="preserve">
+    <value>The filter name must be unique.</value>
+    <comment>Error message.</comment>
   </data>
 </root>

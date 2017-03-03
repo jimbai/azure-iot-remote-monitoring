@@ -14,6 +14,10 @@
     animation: load5 1.1s infinite ease;
 }
 
+.grid_subhead_detail_label_job_property {
+    text-transform: uppercase;
+}
+
 .details_grid_job_method_payload {
     display: inline-flex;
     font-size: 0.75em;
@@ -33,12 +37,16 @@
 }
 
 .job_result_section__twin_list {
-    font-size: 0.75em;
+    font-size: 1em;
     list-style-type: none;
     columns: 2;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.job_result_section__twin_list_crossline {
+    text-decoration: line-through;
 }
 
 .job_result_section__device_list {
@@ -88,13 +96,6 @@
 
 .job_result_status_filter_selected {
     border-bottom: 1px solid;
-}
-
-.job_result_payload {
-    max-width: 300px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 #jobResultDialog .dialog_dialog {
