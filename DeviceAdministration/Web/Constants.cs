@@ -12,3 +12,4 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web
         public const string DeviceIconFullTagName = "tags." + DeviceIconTagName;
     }
 }
+
