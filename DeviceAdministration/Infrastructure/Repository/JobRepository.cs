@@ -14,17 +14,51 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
     public class JobRepository : IJobRepository
     {
         private readonly IAzureTableStorageClient _azureTableStorageClient;
-
+        private readonly bool _requireUserIdentity;
         public JobRepository(IConfigurationProvider configurationProvider, IAzureTableStorageClientFactory tableStorageClientFactory)
         {
             var connectionString = configurationProvider.GetConfigurationSettingValue("device.StorageConnectionString");
             var tableName = configurationProvider.GetConfigurationSettingValueOrDefault("JobTableName", "JobList");
+            _requireUserIdentity = CheckRequireUserOrNot(configurationProvider); 
             _azureTableStorageClient = tableStorageClientFactory.CreateClient(connectionString, tableName);
         }
 
         public async Task AddAsync(JobRepositoryModel job)
         {
+            if (_requireUserIdentity)
+            {
+                await AddAsyncWithUser(job);
+            }
+            else
+            {
+                await AddAsyncWithoutUser(job);
+            }
+        }
+
+        public async Task AddAsyncWithoutUser(JobRepositoryModel job)
+        {
             var entity = new JobTableEntity(job);
+            var result = await _azureTableStorageClient.DoTableInsertOrReplaceAsync(entity, e => (object)null);
+
+            if (result.Status != TableStorageResponseStatus.Successful)
+            {
+                throw new JobRepositorySaveException(job.JobId);
+            }
+        }
+
+
+        public async Task AddAsyncWithUser(JobRepositoryModel job)
+        {
+            var entity = new JobTableEntity(job);
+            string user = null;
+            try {
+                user = System.Web.HttpContext.Current.User.Identity.Name.Split('@')[0];
+            }
+            catch
+            {
+                user = string.Empty;
+            }
+            entity.JobCreatorAlias = user;
             var result = await _azureTableStorageClient.DoTableInsertOrReplaceAsync(entity, e => (object)null);
 
             if (result.Status != TableStorageResponseStatus.Successful)
@@ -111,6 +145,20 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             }
 
             return entities.Single();
+        }
+        
+        private bool CheckRequireUserOrNot(IConfigurationProvider configurationProvider)
+        {
+            try
+            {
+                //Config name will be changed in the future.
+                var configItem = configurationProvider.GetConfigurationSettingValue("SuperAdminList");
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
