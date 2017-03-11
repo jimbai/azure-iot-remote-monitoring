@@ -11,6 +11,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public string MethodName { get; set; }
         public ExtendJobType JobType { get; set; }
         public string LocalizedJobTypeString { get; internal set; }
+        public string CreatorAlias { get; set; }
 
         public JobRepositoryModel(JobTableEntity e)
         {
@@ -20,6 +21,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             // Both FilterId and FilterName should be empty when the filter deleted
             FilterId = string.IsNullOrEmpty(e.FilterName) ? string.Empty : e.FilterId;
             MethodName = e.MethodName;
+            CreatorAlias = e.JobCreatorAlias;
             ExtendJobType value;
             // Use default value if ExtendJobType is not stored in the table or stored but not recognized.
             if (!Enum.TryParse(e.JobType, out value))

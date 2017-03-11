@@ -11,6 +11,7 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Mode
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Security;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.WebApiControllers
 {
@@ -19,11 +20,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
     {
         private readonly IJobRepository _jobRepository;
         private readonly IIoTHubDeviceManager _iotHubDeviceManager;
+        private readonly bool _requireUserIdentity;
 
         public JobApiController(IJobRepository jobRepository, IIoTHubDeviceManager iotHubDeviceManager)
         {
             _jobRepository = jobRepository;
             _iotHubDeviceManager = iotHubDeviceManager;
+            _requireUserIdentity = CheckRequireUserOrNot(new ConfigurationProvider());
+
         }
 
         [HttpGet]
@@ -39,7 +43,29 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                 var sortedJobs = jobResponses.Select(r => new DeviceJobModel(r)).OrderByDescending(j => j.StartTime).ToList();
                 var tasks = sortedJobs.Select(job => AddMoreDetailsToJobAsync(job));
                 await Task.WhenAll(tasks);
-
+                if (_requireUserIdentity)
+                {
+                    string user = null;
+                    try
+                    {
+                        user = System.Web.HttpContext.Current.User.Identity.Name.Split('@')[0];
+                    }
+                    catch
+                    {
+                        user = string.Empty;
+                    }
+                    List<DeviceJobModel> output = new List<DeviceJobModel>();
+                    foreach(var job in sortedJobs)
+                    {
+                        if(await FindCreatorOfJob(job.JobId) == user)
+                        {
+                            output.Add(job);
+                        }
+                    }
+                    //var filtertasks = sortedJobs.Select(async job => await FindCreatorOfJob(job.JobId) == user);
+                    // await Task.WhenAll(filtertasks);
+                    sortedJobs = output;
+                }
                 var dataTablesResponse = new DataTablesResponse<DeviceJobModel>()
                 {
                     RecordsTotal = sortedJobs.Count,
@@ -81,6 +107,33 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         {
             Task<JobRepositoryModel> queryJobTask = _jobRepository.QueryByJobIDAsync(job.JobId);
             await DeviceJobHelper.AddMoreDetailsToJobAsync(job, queryJobTask);
+        }
+
+        private async Task<string> FindCreatorOfJob(string jobid)
+        {try {
+            var job =  await _jobRepository.QueryByJobIDAsync(jobid);
+           
+            if (job.CreatorAlias == null) return "";
+            else return job.CreatorAlias;
+            }
+            catch
+            {
+                return "";
+            }
+        }
+
+        private bool CheckRequireUserOrNot(IConfigurationProvider configurationProvider)
+        {
+            try
+            {
+                //Config name will be changed in the future.
+                var configItem = configurationProvider.GetConfigurationSettingValue("SuperAdminList");
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
         }
     }
 }
