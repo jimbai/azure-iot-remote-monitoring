@@ -19,7 +19,7 @@ using Xunit;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web
 {
-    public class DeviceControllerTests
+    public class DeviceControllerTests : IDisposable
     {
         private readonly Mock<IApiRegistrationRepository> _apiRegistrationRepository;
         private readonly Mock<ICellularExtensions> _cellulerExtensionsMock;
@@ -76,10 +76,13 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web
             var deviceType = _fixture.Create<DeviceType>();
             var devices = _fixture.Create<DeviceListFilterResult>();
             var iccids = _fixture.Create<List<string>>();
+            var apiRegistrationModel = _fixture.Create<ApiRegistrationModel>();
+            apiRegistrationModel.ApiRegistrationProvider = DeviceManagement.Infrustructure.Connectivity.Models.Constants.ApiRegistrationProviderTypes.Jasper;
 
             _apiRegistrationRepository.Setup(repo => repo.IsApiRegisteredInAzure()).Returns(true);
+            _apiRegistrationRepository.Setup(repo => repo.RecieveDetails()).Returns(apiRegistrationModel);
             _deviceLogicMock.Setup(mock => mock.GetDevices(It.IsAny<DeviceListFilter>())).ReturnsAsync(devices);
-            _cellulerExtensionsMock.Setup(mock => mock.GetListOfAvailableIccids(It.IsAny<List<DeviceModel>>()))
+            _cellulerExtensionsMock.Setup(mock => mock.GetListOfAvailableIccids(It.IsAny<List<DeviceModel>>(), RemoteMonitoring.Common.Constants.ApiRegistrationProviderTypes.Jasper))
                 .Returns(iccids);
 
             var result = await _deviceController.SelectType(deviceType);
@@ -103,7 +106,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web
 
             //GetListOfAvailableIccids throws
             _apiRegistrationRepository.Setup(repo => repo.IsApiRegisteredInAzure()).Returns(true);
-            _cellulerExtensionsMock.Setup(mock => mock.GetListOfAvailableIccids(It.IsAny<List<DeviceModel>>()))
+            _cellulerExtensionsMock.Setup(mock => mock.GetListOfAvailableIccids(It.IsAny<List<DeviceModel>>(), RemoteMonitoring.Common.Constants.ApiRegistrationProviderTypes.Jasper))
                 .Throws(new CellularConnectivityException(new Exception()));
             result = await _deviceController.SelectType(deviceType);
             viewResult = result as PartialViewResult;
@@ -121,10 +124,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web
             var deviceModel = _fixture.Create<UnregisteredDeviceModel>();
             var devices = _fixture.Create<DeviceListFilterResult>();
             var iccids = _fixture.Create<List<string>>();
+            var apiRegistrationModel = _fixture.Create<ApiRegistrationModel>();
 
             _apiRegistrationRepository.Setup(repo => repo.IsApiRegisteredInAzure()).Returns(true);
             _deviceLogicMock.Setup(mock => mock.GetDevices(It.IsAny<DeviceListFilter>())).ReturnsAsync(devices);
             _deviceLogicMock.Setup(mock => mock.GetDeviceAsync(It.IsAny<string>())).ReturnsAsync(new DeviceModel());
+            _apiRegistrationRepository.Setup(repo => repo.RecieveDetails()).Returns(apiRegistrationModel);
             var result = await _deviceController.AddDeviceCreate(button, deviceModel);
 
             var viewResult = result as PartialViewResult;
@@ -212,9 +217,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web
             var iccId = _fixture.Create<string>();
             var terminalDevice = _fixture.Create<Terminal>();
             var sessionInfo = _fixture.Create<List<SessionInfo>>();
+            var apiRegistrationModel = _fixture.Create<ApiRegistrationModel>();
+
             _cellulerExtensionsMock.Setup(mock => mock.GetSingleTerminalDetails(It.IsAny<Iccid>()))
                 .Returns(terminalDevice);
             _cellulerExtensionsMock.Setup(mock => mock.GetSingleSessionInfo(It.IsAny<Iccid>())).Returns(sessionInfo);
+            _apiRegistrationRepository.Setup(mock => mock.RecieveDetails()).Returns(apiRegistrationModel);
 
             var result = _deviceController.GetDeviceCellularDetails(iccId);
             var viewResult = result as PartialViewResult;
@@ -242,5 +250,40 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web
             await _deviceController.DeleteDevice(deviceID);
             _deviceLogicMock.Verify(mock => mock.RemoveDeviceAsync(deviceID), Times.Once());
         }
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    _deviceController.Dispose();
+                }
+
+                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
+                // TODO: set large fields to null.
+
+                disposedValue = true;
+            }
+        }
+
+        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
+        // ~DeviceControllerTests() {
+        //   // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+        //   Dispose(false);
+        // }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
+        #endregion
     }
 }

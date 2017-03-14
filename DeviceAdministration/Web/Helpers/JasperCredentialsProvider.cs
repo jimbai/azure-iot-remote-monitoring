@@ -1,4 +1,6 @@
-﻿using DeviceManagement.Infrustructure.Connectivity.Models.Jasper;
+﻿using System;
+using DeviceManagement.Infrustructure.Connectivity.Models.Constants;
+using DeviceManagement.Infrustructure.Connectivity.Models.Jasper;
 using DeviceManagement.Infrustructure.Connectivity.Models.Security;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository;
 
@@ -16,13 +18,33 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         public ICredentials Provide()
         {
             var apiRegistration = _registrationRepository.RecieveDetails();
-            return new JasperCredentials()
+            switch (apiRegistration.ApiRegistrationProvider)
             {
-                BaseUrl = apiRegistration.BaseUrl,
-                LicenceKey = apiRegistration.LicenceKey,
-                Password = apiRegistration.Password,
-                Username = apiRegistration.Username
-            };
+                case ApiRegistrationProviderTypes.Jasper:
+                    return new JasperCredentials()
+                    {
+                        BaseUrl = apiRegistration.BaseUrl,
+                        LicenceKey = apiRegistration.LicenceKey,
+                        Password = apiRegistration.Password,
+                        Username = apiRegistration.Username,
+                        ApiRegistrationProvider = apiRegistration.ApiRegistrationProvider
+                    };
+                case ApiRegistrationProviderTypes.Ericsson:
+                    return new EricssonCredentials()
+                    {
+                        BaseUrl = apiRegistration.BaseUrl,
+                        LicenceKey = apiRegistration.LicenceKey,
+                        Password = apiRegistration.Password,
+                        Username = apiRegistration.Username,
+                        ApiRegistrationProvider = apiRegistration.ApiRegistrationProvider,
+                        EnterpriseSenderNumber = apiRegistration.EnterpriseSenderNumber,
+                        RegistrationID = apiRegistration.RegistrationID,
+                        SmsEndpointBaseUrl = apiRegistration.SmsEndpointBaseUrl
+                    };
+                default:
+                    throw new IndexOutOfRangeException(FormattableString.Invariant($"Could not find a service for '{apiRegistration.ApiRegistrationProvider}' provider"));
+            }
+
         }
     }
 }
