@@ -11,14 +11,14 @@ using System;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web.WebApiControllers
 {
-    public class JobApiControllerTests : IDisposable
+    public class JobApiControllerMultipleTests : IDisposable
     {
         private readonly JobApiController controller;
         private Mock<IJobRepository> jobRepository;
         private Mock<IIoTHubDeviceManager> iotHubDeviceManager;
         private readonly Fixture fixture;
 
-        public JobApiControllerTests()
+        public JobApiControllerMultipleTests()
         {
             jobRepository = new Mock<IJobRepository>();
             iotHubDeviceManager = new Mock<IIoTHubDeviceManager>();
@@ -85,7 +85,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web.We
                 }",
             };
             JobRepositoryModel repositoryModel = fixture.Create<JobRepositoryModel>();
-            //assign "" value to creator alias to match the user alias in test environment.
+            //assign "testadmin" value to creator alias to match the user alias in test environment.
             repositoryModel.CreatorAlias = "testadmin";
             iotHubDeviceManager.Setup(x => x.GetJobResponsesAsync()).ReturnsAsync(jobResponses);
             jobRepository.Setup(x => x.QueryByJobIDAsync(It.IsNotNull<string>())).ReturnsAsync(repositoryModel);

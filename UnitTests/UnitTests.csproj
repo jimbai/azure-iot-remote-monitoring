@@ -246,6 +246,7 @@
     <Compile Include="Infrastructure\SecurityKeyGeneratorTests.cs" />
     <Compile Include="Infrastructure\UserSettingsLogicTests.cs" />
     <Compile Include="Infrastructure\UserSettingsRepositoryTests.cs" />
+    <Compile Include="MultipleTest\JobApiControllerMultipleTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Common\SampleDataGeneratorTests.cs" />
     <Compile Include="Simulator.WebJob\CoolerDeviceFactoryTests.cs" />
@@ -276,6 +277,7 @@
     <Compile Include="Web\Helpers\CellularExtensionsTests.cs" />
     <Compile Include="Web\Helpers\DeviceDisplayHelperTests.cs" />
     <Compile Include="Web\Helpers\DeviceJobHelperTests.cs" />
+    <Compile Include="MultipleTest\IdentityHelperTests.cs" />
     <Compile Include="Web\Helpers\JasperCredentialProviderTests.cs" />
     <Compile Include="Web\WebApiControllers\DeviceActionsApiControllerTests.cs" />
     <Compile Include="Web\WebApiControllers\DeviceApiControllerTests.cs" />

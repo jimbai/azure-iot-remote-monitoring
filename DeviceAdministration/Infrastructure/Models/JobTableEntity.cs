@@ -16,6 +16,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public string JobType { get; set; }
 
+        public string JobCreatorAlias { get; set; }
+
         public JobTableEntity()
         {
         }

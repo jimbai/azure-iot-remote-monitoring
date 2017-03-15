@@ -5,7 +5,7 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastr
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Extensions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Models;
-
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Helpers
 {
@@ -16,10 +16,9 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
             try
             {
                 JobRepositoryModel repositoryModel = await queryJobRepositoryTask;
-
+                job.CreatorName = repositoryModel.CreatorAlias;
                 job.JobName = repositoryModel.JobName ?? Strings.NotApplicableValue;
                 job.FilterId = repositoryModel.FilterId;
-
                 string filterName = repositoryModel.FilterName;
                 if (string.IsNullOrEmpty(filterName))
                 {
