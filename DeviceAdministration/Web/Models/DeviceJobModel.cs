@@ -62,6 +62,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         public string DeviceId { get; set; }
         public Twin UpdateTwin { get; set; }
         public CloudToDeviceMethod CloudToDeviceMethod { get; set; }
+        public string CreatorName { get; set; }
 
         public bool IsMethodJob
         {

@@ -24,7 +24,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public async Task AddAsync(JobRepositoryModel job)
         {
+            //get current user, and write into the azure table.
             var entity = new JobTableEntity(job);
+            string user = IdentityHelper.GetCurrentUserName();
+            entity.JobCreatorAlias = user;
             var result = await _azureTableStorageClient.DoTableInsertOrReplaceAsync(entity, e => (object)null);
 
             if (result.Status != TableStorageResponseStatus.Successful)
