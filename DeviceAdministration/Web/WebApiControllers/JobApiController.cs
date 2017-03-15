@@ -11,6 +11,8 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Mode
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Security;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.WebApiControllers
 {
@@ -34,12 +36,15 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         {
             return await GetServiceResponseAsync<DataTablesResponse<DeviceJobModel>>(async () =>
             {
+                var user = IdentityHelper.GetCurrentUserName();
+                var desiredCreator = IdentityHelper.IsMultiTenantEnabled(new ConfigurationProvider())? user:null;
                 var jobResponses = await _iotHubDeviceManager.GetJobResponsesAsync();
 
                 var sortedJobs = jobResponses.Select(r => new DeviceJobModel(r)).OrderByDescending(j => j.StartTime).ToList();
                 var tasks = sortedJobs.Select(job => AddMoreDetailsToJobAsync(job));
                 await Task.WhenAll(tasks);
 
+                sortedJobs = sortedJobs.Where(job => desiredCreator == null || job.CreatorName == desiredCreator).ToList();
                 var dataTablesResponse = new DataTablesResponse<DeviceJobModel>()
                 {
                     RecordsTotal = sortedJobs.Count,
