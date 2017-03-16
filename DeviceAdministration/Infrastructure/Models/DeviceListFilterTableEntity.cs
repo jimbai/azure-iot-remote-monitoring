@@ -66,5 +66,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         /// Indicate if this is a temporary filter generated automatically.
         /// </summary>
         public bool IsTemporary { get; set; }
+
+        public string UserName { get; set; }
     }
 }

@@ -33,5 +33,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             EnabledState = true;
             Operator = ">";
         }
+
+        public string UserName { get; set; }
     }
 }

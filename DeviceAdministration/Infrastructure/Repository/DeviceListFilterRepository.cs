@@ -10,6 +10,7 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastr
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
+using System.Web;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -97,7 +98,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 await _filterTableStorageClient.DoTableInsertOrReplaceAsync(
                     new DeviceListFilterTableEntity(filter)
                     {
-                        ETag = "*"
+                        ETag = "*",
+                        UserName = "*"
                     },
                     BuildFilterModelFromEntity);
             }
@@ -146,7 +148,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 }
             }
 
-            DeviceListFilterTableEntity newEntity = new DeviceListFilterTableEntity(filter) { ETag = "*" };
+            DeviceListFilterTableEntity newEntity = new DeviceListFilterTableEntity(filter) { ETag = "*",UserName = IdentityHelper.GetCurrentUserName()};
             var result = await _filterTableStorageClient.DoTableInsertOrReplaceAsync(newEntity, BuildFilterModelFromEntity);
 
             if (result.Status == TableStorageResponseStatus.Successful)
@@ -253,7 +255,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
             var tasks = clauses.Select(async clause =>
             {
-                var newClause = new ClauseTableEntity(clause) { ETag = "*" };
+                var newClause = new ClauseTableEntity(clause) { ETag = "*" , UserName = IdentityHelper.GetCurrentUserName() };
                 TableQuery<ClauseTableEntity> query = new TableQuery<ClauseTableEntity>()
                     .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, newClause.PartitionKey));
                 var clauseEntities = await _clauseTableStorageClient.ExecuteQueryAsync(query);

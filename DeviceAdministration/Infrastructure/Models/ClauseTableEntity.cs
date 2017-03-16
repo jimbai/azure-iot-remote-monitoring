@@ -23,5 +23,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public string ClauseValue { get; set; }
         public string ClauseDataType { get; set; }
         public long HitCounter { get; set; }
+        public string UserName { get; set; }
     }
 }

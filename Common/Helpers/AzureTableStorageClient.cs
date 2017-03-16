@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.WindowsAzure.Storage;
 using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
 {
@@ -14,11 +15,19 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
         private readonly string _tableName;
         private CloudTable _table;
 
+        private readonly bool multiTenantEnabled = false;
+        private readonly string currentUser = string.Empty;
+        private readonly bool isSuperAdmin = false;
+
         public AzureTableStorageClient(string storageConnectionString, string tableName)
         {
             var storageAccount = CloudStorageAccount.Parse(storageConnectionString);
             _tableClient = storageAccount.CreateCloudTableClient();
             _tableName = tableName;
+
+            multiTenantEnabled = IdentityHelper.IsMultiTenantEnabled();
+            currentUser = IdentityHelper.GetCurrentUserName();
+            isSuperAdmin = IdentityHelper.IsSuperAdmin();
         }
 
         public TableResult Execute(TableOperation tableOperation)
@@ -46,6 +55,35 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
         }
 
         public async Task<IEnumerable<T>> ExecuteQueryAsync<T>(TableQuery<T> tableQuery) where T : TableEntity, new()
+        {
+            if (multiTenantEnabled && !isSuperAdmin)
+            {
+                return await ExecuteQueryMultiTenantAsync(tableQuery);
+            }
+            else
+            {
+                return await ExecuteQueryOnTableAsync(tableQuery);
+            }
+        }
+
+        public async Task<IEnumerable<T>> ExecuteQueryMultiTenantAsync<T>(TableQuery<T> tableQuery) where T : TableEntity, new()
+        {
+            var usernamefilter = TableQuery.GenerateFilterCondition("UserName", QueryComparisons.Equal, currentUser);
+            var nullfilter = TableQuery.GenerateFilterCondition("UserName", QueryComparisons.Equal, "*");
+            var filter = TableQuery.CombineFilters(usernamefilter, TableOperators.Or, nullfilter);
+            if (string.IsNullOrEmpty(tableQuery.FilterString))
+            {
+                tableQuery.FilterString = filter;
+            }
+            else
+            {
+                tableQuery.FilterString = TableQuery.CombineFilters(tableQuery.FilterString, TableOperators.And, filter);
+            }
+
+            return await ExecuteQueryOnTableAsync(tableQuery);
+        }
+
+        private async Task<IEnumerable<T>> ExecuteQueryOnTableAsync<T>(TableQuery<T> tableQuery) where T : TableEntity, new()
         {
             var table = await GetCloudTableAsync();
             return table.ExecuteQuery(tableQuery);
