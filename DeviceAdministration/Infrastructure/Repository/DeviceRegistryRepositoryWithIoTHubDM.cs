@@ -6,6 +6,8 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.Azure.Devices.Shared;
+using System.Configuration;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -31,6 +33,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             if (device != null)
             {
                 device.Twin = selfTask.Result;
+               
             }
 
             return device;
@@ -89,7 +92,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
             // Query on DocDB for traditional device properties, commands and so on
             var deviceIds = pagedDeviceList.Select(twin => twin.DeviceId);
-            var devicesFromDocDB = (await queryTask).Where(x => deviceIds.Contains(x.DeviceProperties.DeviceID))
+            var devicesList = (await queryTask).ToList();
+            var devicesFromDocDB = devicesList.Where(x => deviceIds.Contains(x.DeviceProperties.DeviceID))
                 .ToDictionary(d => d.DeviceProperties.DeviceID);
 
             return new DeviceListFilterResult
@@ -107,7 +111,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                         return null;
                     }
                 }).Where(model => model != null).ToList(),
-                TotalDeviceCount = (int)await this._deviceManager.GetDeviceCountAsync(),
+                TotalDeviceCount = (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())? devicesList.Count(m=> IdentityHelper.GetCurrentUserName()==(m.Twin.Tags.Get("UserName")?.ToString() as string)) : (int)await this._deviceManager.GetDeviceCountAsync(),
                 TotalFilteredCount = filteredDevices.Count()
             };
         }

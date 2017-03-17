@@ -9,6 +9,9 @@ using System.Threading.Tasks;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
+using System.Web;
+using System.Configuration;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -26,6 +29,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         private const string RULE_OUTPUT_COLUMN_NAME = "ruleoutput";
         private const string TIME_COLUMN_NAME = "time";
 
+        private readonly IDeviceRegistryCrudRepository _deviceRepository;
         private readonly IBlobStorageClient _blobStorageManager;
         private readonly string deviceAlertsDataPrefix;
 
@@ -36,7 +40,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         /// The IConfigurationProvider implementation with which the new 
         /// instance will be initialized.
         /// </param>
-        public AlertsRepository(IConfigurationProvider configProvider, IBlobStorageClientFactory blobStorageClientFactory)
+        public AlertsRepository(IConfigurationProvider configProvider, IBlobStorageClientFactory blobStorageClientFactory, IDeviceRegistryCrudRepository deviceRepository)
         {
             if (configProvider == null)
             {
@@ -47,6 +51,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             string alertsStoreContainerName = configProvider.GetConfigurationSettingValue("AlertsStoreContainerName");
             this._blobStorageManager = blobStorageClientFactory.CreateClient(alertsContainerConnectionString, alertsStoreContainerName);
             this.deviceAlertsDataPrefix = configProvider.GetConfigurationSettingValue("DeviceAlertsDataPrefix");
+            this._deviceRepository = deviceRepository;
         }
 
         /// <summary>
@@ -77,8 +82,28 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             foreach (var alertStream in alertBlobReader)
             {
                 var segment = ProduceAlertHistoryItemsAsync(alertStream.Data);
+                if (segment?.Count < 1)
+                {
+                    continue;
+                }
+                if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
+                {
+                    // filter segment
+                    var distinctIds = segment.Select(m => m.DeviceId).Distinct().ToList();
+                    foreach (var item in distinctIds)
+                    {
+                        string userName = (await _deviceRepository.GetDeviceWithUserTagAsync(item)).Twin.Tags.Get("UserName")?.ToString();
+                        if (IdentityHelper.GetCurrentUserName() != userName)
+                        {
+                            foreach (var delete in segment.Where(m=>m.DeviceId== item).ToList())
+                            {
+                                segment.Remove(delete);
+                            }
+                        }
+                    }
+                }
+                
                 IEnumerable<AlertHistoryItemModel> filteredSegment = segment.Where(t => t?.Timestamp != null && (t.Timestamp.Value > minTime));
-
                 var unfilteredCount = segment.Count();
                 var filteredCount = filteredSegment.Count();
 

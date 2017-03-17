@@ -7,6 +7,9 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Exceptions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
+using System.Web;
+using System.Configuration;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -27,15 +30,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         /// <returns>Device instance if present, null if a device was not found with the provided deviceId</returns>
         public virtual async Task<DeviceModel> GetDeviceAsync(string deviceId)
         {
-            if (string.IsNullOrEmpty(deviceId))
+            var result= await GetDeviceWithUserTagAsync(deviceId);
+            if (result!=null&&IdentityHelper.IsMultiTenantEnabled())
             {
-                throw new ArgumentException(deviceId);
+                result.Twin.Tags = result.Twin.Tags.Remove("UserName");
             }
-
-            var query = await _documentClient.QueryAsync();
-            var devices = query.Where(x => x.DeviceProperties.DeviceID == deviceId).ToList();
-            return devices.FirstOrDefault();
+            return result;
         }
+
 
         /// <summary>
         /// Adds a device to the DocumentDB.
@@ -60,7 +62,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             {
                 throw new DeviceAlreadyRegisteredException(device.DeviceProperties.DeviceID);
             }
-
+            if (IdentityHelper.IsMultiTenantEnabled())
+            {
+                device.Twin.Tags.Set("UserName", IdentityHelper.GetCurrentUserName());
+            }
             var savedDevice = await _documentClient.SaveAsync(device);
             return savedDevice;
         }
@@ -104,7 +109,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 throw new DeviceRequiredPropertyNotFoundException("'DeviceID' property is missing");
             }
 
-            DeviceModel existingDevice = await GetDeviceAsync(device.DeviceProperties.DeviceID);
+            DeviceModel existingDevice = await GetDeviceWithUserTagAsync(device.DeviceProperties.DeviceID);
             if (existingDevice == null)
             {
                 throw new DeviceNotRegisteredException(device.DeviceProperties.DeviceID);
@@ -142,6 +147,11 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             }
 
             device.DeviceProperties.UpdatedTime = DateTime.UtcNow;
+            if (IdentityHelper.IsMultiTenantEnabled())
+            {
+                device.Twin.Tags.Set("UserName", existingDevice.Twin.Tags.Get("UserName")?.ToString() as string);
+            }
+
             var savedDevice = await this._documentClient.SaveAsync(device);
             return savedDevice;
         }
@@ -153,7 +163,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 throw new ArgumentNullException("deviceId");
             }
 
-            DeviceModel existingDevice = await this.GetDeviceAsync(deviceId);
+            DeviceModel existingDevice = await this.GetDeviceWithUserTagAsync(deviceId);
 
             if (existingDevice == null)
             {
@@ -174,6 +184,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public virtual async Task<DeviceListFilterResult> GetDeviceList(DeviceListFilter filter)
         {
+            if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
+            {
+                if (filter?.Clauses==null)
+                {
+                    filter.Clauses = new List<Clause>();
+                }
+                filter.Clauses.Add(new Clause { ColumnName = "tags.UserName", ClauseType = ClauseType.EQ, ClauseDataType = TwinDataType.String, ClauseValue = IdentityHelper.GetCurrentUserName() });
+            }
             List<DeviceModel> deviceList = await this.GetAllDevicesAsync();
 
             IQueryable<DeviceModel> filteredDevices = FilterHelper.FilterDeviceList(deviceList.AsQueryable<DeviceModel>(), filter.Clauses);
@@ -183,7 +201,13 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             IQueryable<DeviceModel> sortedDevices = this.SortDeviceList(filteredAndSearchedDevices, filter.SortColumn, filter.SortOrder);
 
             List<DeviceModel> pagedDeviceList = sortedDevices.Skip(filter.Skip).Take(filter.Take).ToList();
-
+            if (IdentityHelper.IsMultiTenantEnabled())
+            {
+                pagedDeviceList.ForEach(m =>
+                {
+                    m.Twin.Tags = m.Twin.Tags.Remove("UserName");
+                });
+            }
             int filteredCount = filteredAndSearchedDevices.Count();
 
             return new DeviceListFilterResult()
@@ -201,7 +225,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         private async Task<List<DeviceModel>> GetAllDevicesAsync()
         {
             var devices = await _documentClient.QueryAsync();
-            return devices.ToList();
+            var result= devices.ToList();
+            if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
+            {
+                return result.Where(m=>m.Twin.Tags["UserName"]?.ToString() == IdentityHelper.GetCurrentUserName())?.ToList();
+            }
+            return result;
         }
 
         private IQueryable<DeviceModel> SearchDeviceList(IQueryable<DeviceModel> deviceList, string search)
@@ -266,6 +295,19 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             {
                 return deviceList.OrderByDescending(keySelector).AsQueryable();
             }
+        }
+
+        public async Task<DeviceModel> GetDeviceWithUserTagAsync(string deviceId)
+        {
+            if (string.IsNullOrEmpty(deviceId))
+            {
+                throw new ArgumentException(deviceId);
+            }
+
+            var query = await _documentClient.QueryAsync();
+            var devices = query.Where(x => x.DeviceProperties.DeviceID == deviceId).ToList();
+            var result = devices.FirstOrDefault();
+            return result;
         }
     }
 }

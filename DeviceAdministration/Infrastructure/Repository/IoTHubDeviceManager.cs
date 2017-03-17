@@ -7,6 +7,8 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configuration
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.Azure.Devices.Shared;
 using Newtonsoft.Json.Linq;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -73,7 +75,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public async Task<Twin> GetTwinAsync(string deviceId)
         {
-            return await _deviceManager.GetTwinAsync(deviceId);
+            var result= await _deviceManager.GetTwinAsync(deviceId);
+            if (result?.Tags?.Count>0&& IdentityHelper.IsMultiTenantEnabled())
+            {
+                result.Tags = result.Tags.Remove("UserName");
+            }
+            return result;
         }
 
         public async Task UpdateTwinAsync(string deviceId, Twin twin)
@@ -104,6 +111,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public async Task<IEnumerable<Twin>> QueryDevicesAsync(DeviceListFilter filter, int maxDevices = 10000)
         {
+            if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
+            {
+                if (filter?.Clauses == null)
+                {
+                    filter.Clauses = new List<Clause>();
+                }
+                filter.Clauses.Add(new Clause { ColumnName = "tags.UserName", ClauseType = ClauseType.EQ, ClauseDataType = TwinDataType.String, ClauseValue = IdentityHelper.GetCurrentUserName() });
+            }
             var sqlQuery = filter.GetSQLQuery();
             var deviceQuery = this._deviceManager.CreateQuery(sqlQuery);
 

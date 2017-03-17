@@ -5,6 +5,7 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models.Commands;
 using Newtonsoft.Json;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -30,6 +31,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         /// <returns></returns>
         public async Task<DeviceModel> AddDeviceAsync(DeviceModel device, SecurityKeys securityKeys)
         {
+            if (IdentityHelper.IsMultiTenantEnabled())
+            {
+                device.Twin.Tags.Set("UserName", IdentityHelper.GetCurrentUserName());
+            }
             var iotHubDevice = new Device(device.DeviceProperties.DeviceID)
             {
                 Authentication = new AuthenticationMechanism

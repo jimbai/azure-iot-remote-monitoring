@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Azure.Devices.Shared;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using System.Reflection;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions
 {
@@ -273,6 +275,18 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extension
             }
         }
 
+        static public TwinCollection Remove(this TwinCollection collection, string name)
+        {
+            if (!collection.Contains(name))
+            {
+                return collection;
+            }
+            var tags= JsonConvert.DeserializeObject<Dictionary<string, object>>(collection.ToJson());
+            tags.Remove("UserName");
+            string tagsJson= JsonConvert.SerializeObject(tags);
+            return  typeof(TwinCollection).GetConstructors(BindingFlags.NonPublic | BindingFlags.Instance).FirstOrDefault(m => m.GetParameters().Length == 1).Invoke(new object[] { JObject.Parse(tagsJson) }) as TwinCollection;
+        }
+
         static private void Set(this JContainer container, IEnumerable<string> names, dynamic value)
         {
             var name = names.First();
@@ -309,5 +323,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extension
                 }
             }
         }
+
     }
 }
