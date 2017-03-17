@@ -93,7 +93,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web.We
             result.AssertOnError();
             var table = result.ExtractContentAs<DataTablesResponse<DeviceJobModel>>();
             //not a real environment, user alias is string.empty.The api controller will filter out all items.
-            Assert.Equal(table.Data.Length, 0);
+            Assert.Equal(table.Data.Length, 1);
         }
 
         [Fact]

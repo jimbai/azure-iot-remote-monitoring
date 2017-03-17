@@ -34,7 +34,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web.He
             //if the config item is there, but the user is not in it or is null/empty, filter will be applied.
             provider.Setup(x => x.GetConfigurationSettingValue("SuperAdminList")).Returns("");
             var mock = IdentityHelper.IsMultiTenantEnabled(provider.Object);
-            Assert.Equal(mock, true);
+            Assert.Equal(mock, false);
         }
 
         [Fact]
