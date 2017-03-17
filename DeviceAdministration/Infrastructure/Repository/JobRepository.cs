@@ -27,7 +27,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             //get current user, and write into the azure table.
             var entity = new JobTableEntity(job);
             string user = IdentityHelper.GetCurrentUserName();
-            entity.JobCreatorAlias = user;
+            entity.UserName = user;
             var result = await _azureTableStorageClient.DoTableInsertOrReplaceAsync(entity, e => (object)null);
 
             if (result.Status != TableStorageResponseStatus.Successful)
