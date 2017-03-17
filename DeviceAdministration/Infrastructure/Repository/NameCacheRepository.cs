@@ -69,10 +69,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         /// <returns>true if succeeded, false if failed.</returns>
         public async Task<bool> AddNameAsync(NameCacheEntityType entityType, NameCacheEntity entity)
         {
-            if (IdentityHelper.IsMultiTenantEnabled() && entity.Name.Contains("UserName"))
-            {
-                return true;
-            }
             CheckSingleEntityType(entityType);
             NameCacheTableEntity tableEntity = new NameCacheTableEntity(entityType, entity.Name);
             tableEntity.MethodParameters = JsonConvert.SerializeObject(entity.Parameters);
@@ -94,10 +90,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public async Task AddNamesAsync(NameCacheEntityType entityType, IEnumerable<string> names)
         {
             CheckSingleEntityType(entityType);
-            if (IdentityHelper.IsMultiTenantEnabled())
-            {
-                names = names.Where(m => !m.Contains("UserName"));
-            }
+
             var operations = names.Select(name => TableOperation.InsertOrReplace(new NameCacheTableEntity(entityType, name)
             {
                 MethodParameters = "null",  // [WORKAROUND] Existing code requires "null" rather than null for tag or properties

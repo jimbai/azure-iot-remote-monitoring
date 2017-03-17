@@ -27,13 +27,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         Task<DeviceModel> GetDeviceAsync(string deviceId);
 
         /// <summary>
-        /// Gets a device asynchronously.
-        /// </summary>
-        /// <param name="deviceId">The device identifier.</param>
-        /// <returns></returns>
-        Task<DeviceModel> GetDeviceWithUserTagAsync(string deviceId);
-
-        /// <summary>
         /// Updates a device asynchronously.
         /// </summary>
         /// <param name="device">The device.</param>

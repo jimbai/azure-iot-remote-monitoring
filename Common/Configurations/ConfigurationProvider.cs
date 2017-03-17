@@ -26,8 +26,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configura
                     bool isEmulated = Environment.CommandLine.Contains("iisexpress.exe") || 
                         Environment.CommandLine.Contains("w3wp.exe") ||
                         Environment.CommandLine.Contains("WebJob.vshost.exe");
-                    
-                    if (true && (configValue != null && configValue.StartsWith(ConfigToken, StringComparison.OrdinalIgnoreCase)))
+
+                    if (isEmulated && (configValue != null && configValue.StartsWith(ConfigToken, StringComparison.OrdinalIgnoreCase)))
                     {
                         if (environment == null)
                         {
