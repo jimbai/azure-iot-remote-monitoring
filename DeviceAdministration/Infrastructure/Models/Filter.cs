@@ -12,6 +12,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             AdvancedClause = filter.AdvancedClause;
             IsAdvanced = filter.IsAdvanced;
             IsTemporary = filter.IsTemporary;
+            UserName = filter.UserName;
         }
 
         public Filter() { }
@@ -29,5 +30,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public bool IsAdvanced { get; set; }
 
         public int AssociatedJobsCount { get; set; }
+
+        public string UserName { get; set; }
     }
 }

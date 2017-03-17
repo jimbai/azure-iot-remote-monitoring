@@ -1,6 +1,7 @@
 ﻿@using System.Globalization
 @using GlobalResources
 @using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Security
+@using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
 
 <div class="device_list_column_editor_container">
     <div class="name_selector_container">
@@ -40,7 +41,8 @@
         </section>
     </div>
     <div class="device_list_columns_button_container">
-        @if (PermsChecker.HasPermission(Permission.SaveDeviceListColumnsAsGlobal))
+        @if (PermsChecker.HasPermission(Permission.SaveDeviceListColumnsAsGlobal) && !IdentityHelper.IsMultiTenantEnabled()
+                || IdentityHelper.IsSuperAdmin())
         {
             <div class="device_list_columns_save_default">
                 <label class="grid_detail_label"><input type="checkbox" id="chkSaveDefault" /> @Strings.SaveAsDefault</label>

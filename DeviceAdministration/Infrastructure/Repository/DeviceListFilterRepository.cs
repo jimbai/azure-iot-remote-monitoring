@@ -10,6 +10,8 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastr
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
+using System.Web;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -20,6 +22,11 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         private readonly IAzureTableStorageClient _clauseTableStorageClient;
         private readonly string _filterTableName = "FilterList";
         private readonly string _clauseTableName = "SuggestedClausesList";
+
+        private readonly bool isMutliTenantEnabled = false;
+        private readonly bool isSuperAdmin = false;
+        private readonly string currentUserName;
+        private readonly string currentUserShortName;
 
         private static object _initializeLock = new object();
         private static bool DefaultFilterInitialized = false;
@@ -73,6 +80,11 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             _filterTableStorageClient = filterTableStorageClientFactory.CreateClient(_storageAccountConnectionString, filterTableName);
             string clauseTableName = configurationProvider.GetConfigurationSettingValueOrDefault("SuggestedClauseTableName", _clauseTableName);
             _clauseTableStorageClient = clausesTableStorageClientFactory.CreateClient(_storageAccountConnectionString, clauseTableName);
+            isMutliTenantEnabled = IdentityHelper.IsMultiTenantEnabled();
+            isSuperAdmin = IdentityHelper.IsSuperAdmin();
+            currentUserName = IdentityHelper.GetCurrentUserName();
+            currentUserShortName = IdentityHelper.GetUserShortName();
+
 
             var task = InitializeDefaultFilter();
         }
@@ -97,7 +109,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 await _filterTableStorageClient.DoTableInsertOrReplaceAsync(
                     new DeviceListFilterTableEntity(filter)
                     {
-                        ETag = "*"
+                        ETag = "*",
+                        UserName = "*"
                     },
                     BuildFilterModelFromEntity);
             }
@@ -115,7 +128,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             TableQuery<DeviceListFilterTableEntity> query = new TableQuery<DeviceListFilterTableEntity>().Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, id));
             var entities = await _filterTableStorageClient.ExecuteQueryAsync(query);
             if (!entities.Any()) return null;
-            return new DeviceListFilter(entities.First());
+            return BuildFilterModelFromEntity(entities.First());
         }
 
         public async Task<DeviceListFilter> SaveFilterAsync(DeviceListFilter filter, bool force = false)
@@ -124,9 +137,11 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             if (oldFilter == null)
             {
                 filter.Id = Guid.NewGuid().ToString();
+                filter.UserName = IdentityHelper.GetCurrentUserName();
             }
             else
             {
+                filter.UserName = oldFilter.UserName;
                 if (!force) return oldFilter;
             }
 
@@ -146,7 +161,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 }
             }
 
-            DeviceListFilterTableEntity newEntity = new DeviceListFilterTableEntity(filter) { ETag = "*" };
+            DeviceListFilterTableEntity newEntity = BuildNewEntityForFilter(filter);
             var result = await _filterTableStorageClient.DoTableInsertOrReplaceAsync(newEntity, BuildFilterModelFromEntity);
 
             if (result.Status == TableStorageResponseStatus.Successful)
@@ -154,7 +169,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 // Safely delete old filter after the new renamed filter is saved successfully
                 if (oldFilter != null && !oldFilter.Name.Equals(filter.Name, StringComparison.InvariantCulture))
                 {
-                    var oldEntity = new DeviceListFilterTableEntity(oldFilter) { ETag = "*" };
+                    var oldEntity = BuildNewEntityForFilter(oldFilter);
                     await _filterTableStorageClient.DoDeleteAsync(oldEntity, e => (object)null);
                 }
                 return await GetFilterAsync(filter.Id);
@@ -172,7 +187,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var filter = await GetFilterAsync(id);
             if (filter == null) return false;
 
-            DeviceListFilterTableEntity entity = new DeviceListFilterTableEntity(id, filter.Name) { ETag = "*" };
+            DeviceListFilterTableEntity entity = BuildNewEntityForFilter(filter);
             var result = await _filterTableStorageClient.DoTouchAsync(entity, BuildFilterModelFromEntity);
             return result.Status == TableStorageResponseStatus.Successful;
         }
@@ -183,8 +198,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             // if the filter doesn't exist, return true idempotently just behave as it has been deleted successfully.
             if (filter == null) return true;
 
-            DeviceListFilterTableEntity entity = new DeviceListFilterTableEntity(id, filter.Name);
-            entity.ETag = "*";
+            DeviceListFilterTableEntity entity = BuildNewEntityForFilter(filter);
             var result = await _filterTableStorageClient.DoDeleteAsync(entity, BuildFilterModelFromEntity);
             return (result.Status == TableStorageResponseStatus.Successful);
         }
@@ -253,7 +267,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
             var tasks = clauses.Select(async clause =>
             {
-                var newClause = new ClauseTableEntity(clause) { ETag = "*" };
+                var newClause = new ClauseTableEntity(clause) { ETag = "*" , UserName = IdentityHelper.GetCurrentUserName() };
                 TableQuery<ClauseTableEntity> query = new TableQuery<ClauseTableEntity>()
                     .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, newClause.PartitionKey));
                 var clauseEntities = await _clauseTableStorageClient.ExecuteQueryAsync(query);
@@ -316,10 +330,23 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 order = QuerySortOrder.Descending;
             }
 
+            string filterName;
+            if (isMutliTenantEnabled && ! isSuperAdmin)
+            {
+                // Match patten for filter name in mutli-tenant model
+                Regex reg = new Regex("^__\\S+__");
+                filterName = reg.Replace(entity.Name, String.Empty);
+            }
+            else
+            {
+                filterName = entity.Name;
+            }
+
             return new DeviceListFilter(entity)
             {
                 Clauses = clauses,
                 SortOrder = order,
+                Name = filterName,
             };
         }
 
@@ -357,6 +384,16 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 ClauseValue = entity.ClauseValue,
                 ClauseDataType = clauseDataType,
             };
+        }
+
+        private DeviceListFilterTableEntity BuildNewEntityForFilter(DeviceListFilter filter)
+        {
+            var newfilterName = filter.Name;
+            if (isMutliTenantEnabled && !isSuperAdmin)
+            {
+                newfilterName = $"__{currentUserShortName}__{filter.Name}";
+            }
+            return new DeviceListFilterTableEntity(filter) {RowKey=newfilterName, Name=newfilterName, UserName = filter.UserName, ETag="*" };
         }
     }
 }
