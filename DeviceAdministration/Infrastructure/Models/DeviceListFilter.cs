@@ -67,6 +67,11 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         /// </summary>
         public bool IsTemporary { get; set; }
 
+        /// <summary>
+        /// Mutli-tenant mode user information.
+        /// </summary>
+        public string UserName { get; set; }
+
         public DeviceListFilter() { }
 
         public DeviceListFilter(DeviceListFilterTableEntity entity)
@@ -78,6 +83,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             SortColumn = entity.SortColumn;
             IsAdvanced = entity.IsAdvanced;
             IsTemporary = entity.IsTemporary;
+            UserName = entity.UserName;
         }
 
         public DeviceListFilter(Filter filter)
@@ -88,6 +94,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             AdvancedClause = filter.AdvancedClause;
             IsAdvanced = filter.IsAdvanced;
             IsTemporary = filter.IsTemporary;
+            UserName = filter.UserName;
         }
 
         /// <summary>

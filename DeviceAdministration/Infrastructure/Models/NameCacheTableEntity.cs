@@ -22,5 +22,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public string MethodParameters { get; set; }
 
         public string MethodDescription { get; set; }
+
+        public string UserName { get; set; }
     }
 }

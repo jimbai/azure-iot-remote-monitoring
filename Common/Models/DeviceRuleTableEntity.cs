@@ -35,5 +35,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models
         public bool Enabled { get; set; }
 
         public string RuleName { get; set; }
+
+        public string UserName { get; set; }
     }
 }
