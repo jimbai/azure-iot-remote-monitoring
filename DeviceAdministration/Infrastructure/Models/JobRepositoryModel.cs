@@ -21,7 +21,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             // Both FilterId and FilterName should be empty when the filter deleted
             FilterId = string.IsNullOrEmpty(e.FilterName) ? string.Empty : e.FilterId;
             MethodName = e.MethodName;
-            CreatorAlias = e.JobCreatorAlias;
+            CreatorAlias = e.UserName;
             ExtendJobType value;
             // Use default value if ExtendJobType is not stored in the table or stored but not recognized.
             if (!Enum.TryParse(e.JobType, out value))
