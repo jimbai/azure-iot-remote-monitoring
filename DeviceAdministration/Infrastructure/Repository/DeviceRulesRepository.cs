@@ -161,8 +161,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                     DataField = incomingRule.DataField,
                     Threshold = (double)incomingRule.Threshold,
                     Enabled = incomingRule.EnabledState,
-                    RuleOutput = incomingRule.RuleOutput,
-                    RuleName = IdentityHelper.GetCurrentUserName()
+                    RuleOutput = incomingRule.RuleOutput
                 };
 
             if (!string.IsNullOrWhiteSpace(incomingRule.Etag))

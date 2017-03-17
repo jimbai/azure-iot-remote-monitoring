@@ -9,7 +9,6 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
-using System.Web;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -74,7 +73,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             tableEntity.MethodParameters = JsonConvert.SerializeObject(entity.Parameters);
             tableEntity.MethodDescription = entity.Description;
             tableEntity.ETag = "*";
-            tableEntity.UserName = IdentityHelper.GetCurrentUserName();
             var result = await _azureTableStorageClient.DoTableInsertOrReplaceAsync<NameCacheEntity, NameCacheTableEntity>(tableEntity, BuildNameCacheFromTableEntity);
             return (result.Status == TableStorageResponseStatus.Successful);
         }
@@ -94,8 +92,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var operations = names.Select(name => TableOperation.InsertOrReplace(new NameCacheTableEntity(entityType, name)
             {
                 MethodParameters = "null",  // [WORKAROUND] Existing code requires "null" rather than null for tag or properties
-                ETag = "*",
-                UserName = IdentityHelper.GetCurrentUserName()
+                ETag = "*"
             }));
 
             while (operations.Any())
