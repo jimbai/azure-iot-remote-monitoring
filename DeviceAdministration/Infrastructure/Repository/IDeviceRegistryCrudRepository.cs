@@ -1,5 +1,7 @@
 ﻿using System.Threading.Tasks;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
+using System.Collections.Generic;
+using Microsoft.Azure.Devices.Shared;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -27,11 +29,27 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         Task<DeviceModel> GetDeviceAsync(string deviceId);
 
         /// <summary>
+        /// Gets DeviceIds by username
+        /// </summary>
+        /// <param name="deviceId">The device identifier.</param>
+        /// <returns></returns>
+        Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName=null);
+
+        /// <summary>
         /// Updates a device asynchronously.
         /// </summary>
         /// <param name="device">The device.</param>
         /// <returns></returns>
         Task<DeviceModel> UpdateDeviceAsync(DeviceModel device);
+
+        /// <summary>
+        /// Updates a device Twin asynchronously.
+        /// </summary>
+        /// <param name="device">The device.</param>
+        /// <returns></returns>
+        Task UpdateTwinAsync(string deviceId ,Twin twin);
+
+        Task<Twin> GetTwinAsync(string deviceId);
 
         /// <summary>
         /// Updates a device enabled/diabled status asynchronously.

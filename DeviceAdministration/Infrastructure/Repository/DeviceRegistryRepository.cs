@@ -7,6 +7,8 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Exceptions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
+using Microsoft.Azure.Devices.Shared;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -34,7 +36,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
             var query = await _documentClient.QueryAsync();
             var devices = query.Where(x => x.DeviceProperties.DeviceID == deviceId).ToList();
-            return devices.FirstOrDefault();
+            var result = devices.FirstOrDefault();
+            if (result!=null&&IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin() && IdentityHelper.GetCurrentUserName() != result?.Twin.Tags.Get("__UserName__")?.ToString())
+            {
+                throw new Exception("deviceId is invalid");
+            }
+            return result;
         }
 
         /// <summary>
@@ -60,7 +67,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             {
                 throw new DeviceAlreadyRegisteredException(device.DeviceProperties.DeviceID);
             }
-
+            if (IdentityHelper.IsMultiTenantEnabled())
+            {
+                device.Twin.Tags.Set("__UserName__", IdentityHelper.GetCurrentUserName());
+            }
             var savedDevice = await _documentClient.SaveAsync(device);
             return savedDevice;
         }
@@ -109,7 +119,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             {
                 throw new DeviceNotRegisteredException(device.DeviceProperties.DeviceID);
             }
-
+            if (IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin() && existingDevice.Twin.Tags.Get("__UserName__") != device.Twin.Tags.Get("__UserName__"))
+            {
+                throw new NotImplementedException("not allowed to update the  __UserName__");
+            }
             string incomingRid = device._rid ?? "";
 
             if (string.IsNullOrWhiteSpace(incomingRid))
@@ -140,7 +153,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 }
                 device.id = existingId;
             }
-
+            if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
+            {
+                device.Twin.Tags.Set("__UserName__", existingDevice.Twin.Tags.Get("__UserName__").ToString() as string);
+            }
             device.DeviceProperties.UpdatedTime = DateTime.UtcNow;
             var savedDevice = await this._documentClient.SaveAsync(device);
             return savedDevice;
@@ -175,7 +191,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public virtual async Task<DeviceListFilterResult> GetDeviceList(DeviceListFilter filter)
         {
             List<DeviceModel> deviceList = await this.GetAllDevicesAsync();
-
+            if (IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
+            {
+                if (filter?.Clauses == null)
+                {
+                    filter.Clauses = new List<Clause>();
+                }
+                filter.Clauses.Add(new Clause { ColumnName = "tags.__UserName__", ClauseType = ClauseType.EQ, ClauseDataType = TwinDataType.String, ClauseValue = IdentityHelper.GetCurrentUserName() });
+            }
             IQueryable<DeviceModel> filteredDevices = FilterHelper.FilterDeviceList(deviceList.AsQueryable<DeviceModel>(), filter.Clauses);
 
             IQueryable<DeviceModel> filteredAndSearchedDevices = this.SearchDeviceList(filteredDevices, filter.SearchQuery);
@@ -201,7 +224,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         private async Task<List<DeviceModel>> GetAllDevicesAsync()
         {
             var devices = await _documentClient.QueryAsync();
-            return devices.ToList();
+            var result = devices?.ToList();
+            if (result?.Count>0&&IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
+            {
+                return result.Where(m => m.Twin.Tags["__UserName__"]?.ToString() == IdentityHelper.GetCurrentUserName())?.ToList();
+            }
+            return result;
         }
 
         private IQueryable<DeviceModel> SearchDeviceList(IQueryable<DeviceModel> deviceList, string search)
@@ -266,6 +294,41 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             {
                 return deviceList.OrderByDescending(keySelector).AsQueryable();
             }
+        }
+
+        public async Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
+        {
+            var devices = await _documentClient.QueryAsync();
+            var result = devices?.ToList();
+            if (result?.Count > 0 && IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
+            {
+                if (string.IsNullOrWhiteSpace(userName))
+                {
+                    userName = IdentityHelper.GetCurrentUserName();
+                }
+                return result.Where(m => m.Twin.Tags.Get("__UserName__")?.ToString() == userName)?.Select(m => m.DeviceProperties.DeviceID);
+            }
+            return null;
+        }
+
+        public virtual  async Task UpdateTwinAsync(string deviceId, Twin twin)
+        {
+            var device = await GetDeviceAsync(deviceId);
+            if (device == null)
+            {
+                throw new NotImplementedException("deviceId is invalid");
+            }
+            if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin()&& twin.Tags.Get("__UserName__")!=device.Twin.Tags.Get("__UserName__"))
+            {
+                throw new NotImplementedException("not allowed to update the  __UserName__");
+            }
+            device.Twin = twin;
+           await UpdateDeviceAsync(device);
+        }
+
+        public virtual async Task<Twin> GetTwinAsync(string deviceId)
+        {
+            return (await GetDeviceAsync(deviceId))?.Twin;
         }
     }
 }

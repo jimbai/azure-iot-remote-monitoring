@@ -37,14 +37,16 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
             return await GetServiceResponseAsync<DataTablesResponse<DeviceJobModel>>(async () =>
             {
                 var user = IdentityHelper.GetCurrentUserName();
-                var desiredCreator = IdentityHelper.IsMultiTenantEnabled(new ConfigurationProvider())? user:null;
                 var jobResponses = await _iotHubDeviceManager.GetJobResponsesAsync();
 
                 var sortedJobs = jobResponses.Select(r => new DeviceJobModel(r)).OrderByDescending(j => j.StartTime).ToList();
                 var tasks = sortedJobs.Select(job => AddMoreDetailsToJobAsync(job));
                 await Task.WhenAll(tasks);
-
-                sortedJobs = sortedJobs.Where(job => desiredCreator == null || job.CreatorName == desiredCreator).ToList();
+                if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
+                {
+                    sortedJobs = sortedJobs.Where(job => job.CreatorName == user).ToList();
+                }
+               
                 var dataTablesResponse = new DataTablesResponse<DeviceJobModel>()
                 {
                     RecordsTotal = sortedJobs.Count,
