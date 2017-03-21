@@ -7,6 +7,8 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configuration
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.Azure.Devices.Shared;
 using Newtonsoft.Json.Linq;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -19,9 +21,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         private readonly RegistryManager _deviceManager;
         private readonly ServiceClient _serviceClient;
         private readonly JobClient _jobClient;
+        private readonly IJobRepository _jobRepository;
         private bool _disposed;
 
-        public IoTHubDeviceManager(IConfigurationProvider configProvider)
+        public IoTHubDeviceManager(IConfigurationProvider configProvider, IJobRepository jobRepository)
         {
             // Temporary code to bypass https cert validation till DNS on IotHub is configured
             ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, errors) => true;
@@ -29,6 +32,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             this._deviceManager = RegistryManager.CreateFromConnectionString(iotHubConnectionString);
             this._serviceClient = ServiceClient.CreateFromConnectionString(iotHubConnectionString);
             this._jobClient = JobClient.CreateFromConnectionString(iotHubConnectionString);
+            _jobRepository = jobRepository;
         }
 
         public async Task<Device> AddDeviceAsync(Device device)
@@ -73,7 +77,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public async Task<Twin> GetTwinAsync(string deviceId)
         {
-            return await _deviceManager.GetTwinAsync(deviceId);
+            var result= await _deviceManager.GetTwinAsync(deviceId);
+            return result;
         }
 
         public async Task UpdateTwinAsync(string deviceId, Twin twin)
@@ -104,6 +109,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public async Task<IEnumerable<Twin>> QueryDevicesAsync(DeviceListFilter filter, int maxDevices = 10000)
         {
+            if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
+            {
+                if (filter?.Clauses == null)
+                {
+                    filter.Clauses = new List<Clause>();
+                }
+                filter.Clauses.Add(new Clause { ColumnName = "tags.__UserName__", ClauseType = ClauseType.EQ, ClauseDataType = TwinDataType.String, ClauseValue = IdentityHelper.GetCurrentUserName() });
+            }
             var sqlQuery = filter.GetSQLQuery();
             var deviceQuery = this._deviceManager.CreateQuery(sqlQuery);
 
@@ -185,12 +198,18 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             }
 
             var jobs = new List<JobResponse>();
-
+            
             var query = this._jobClient.CreateQuery(null, queryStatus);
+            Func<JobResponse, bool> predicate = j => j.Status == status;
+            if (IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
+            {
+                var jobIds = await _jobRepository.QueryJobIDsByUserName();
+                predicate = j => j.Status == status&&(jobIds?.Contains(j.JobId) == true);
+            }
             while (query.HasMoreResults)
             {
                 var result = await query.GetNextAsJobResponseAsync();
-                jobs.AddRange(result.Where(j => j.Status == status));
+                jobs.AddRange(result.Where(predicate));
             }
 
             return jobs;
