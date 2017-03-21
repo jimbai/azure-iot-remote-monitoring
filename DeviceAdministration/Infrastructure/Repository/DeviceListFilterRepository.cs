@@ -331,7 +331,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             }
 
             string filterName;
-            if (isMutliTenantEnabled && ! isSuperAdmin)
+            if (isMutliTenantEnabled)
             {
                 // Match patten for filter name in mutli-tenant model
                 Regex reg = new Regex("^__\\S+__");
@@ -389,11 +389,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         private DeviceListFilterTableEntity BuildNewEntityForFilter(DeviceListFilter filter)
         {
             var newfilterName = filter.Name;
+            var newUsername = string.IsNullOrEmpty(filter.UserName) ? "*" : filter.UserName;
             if (isMutliTenantEnabled && !isSuperAdmin)
             {
                 newfilterName = $"__{currentUserShortName}__{filter.Name}";
             }
-            return new DeviceListFilterTableEntity(filter) {RowKey=newfilterName, Name=newfilterName, UserName = filter.UserName, ETag="*" };
+            return new DeviceListFilterTableEntity(filter) {RowKey=newfilterName, Name=newfilterName, UserName = newUsername, ETag="*" };
         }
     }
 }

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
+using System.Collections.Generic;
 using System.Web;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Security
@@ -20,10 +21,15 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         // default OAuth role name in AAD
         private const string NATIVE_CLIENT_ROLE_NAME = "user_impersonation";
 
+
+        // Virtual Super admin role name for mutli-tenant mode
+        private const string SUPERADMIN_ROLE_NAME = "SuperAdmin";
+
         public RolePermissions()
         {
             _allRoles = new List<string> 
                 {
+                    SUPERADMIN_ROLE_NAME,
                     ADMIN_ROLE_NAME,
                     READ_ONLY_ROLE_NAME,
                     NATIVE_CLIENT_ROLE_NAME
@@ -40,7 +46,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
 
             foreach(var role in _allRoles)
             {
-                if (httpContext.User.IsInRole(role) && rolesRequired.Contains(role))
+                if (IdentityHelper.IsMultiTenantEnabled() &&
+                         rolesRequired.Contains(SUPERADMIN_ROLE_NAME))
+                {
+                    return IdentityHelper.IsSuperAdmin();
+                }
+                else if (httpContext.User.IsInRole(role) && rolesRequired.Contains(role))
                 {
                     return true;
                 }
@@ -85,7 +96,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
 
             AssignRolesToPermission(Permission.ViewActions,
                 READ_ONLY_ROLE_NAME,
-                ADMIN_ROLE_NAME);
+                ADMIN_ROLE_NAME,
+                SUPERADMIN_ROLE_NAME);
             
             AssignRolesToPermission(Permission.AssignAction,
                 ADMIN_ROLE_NAME);
@@ -130,7 +142,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                 ADMIN_ROLE_NAME);
 
             AssignRolesToPermission(Permission.CellularConn,
-                ADMIN_ROLE_NAME);
+                ADMIN_ROLE_NAME,
+                SUPERADMIN_ROLE_NAME);
 
             AssignRolesToPermission(Permission.ViewJobs,
                 NATIVE_CLIENT_ROLE_NAME,

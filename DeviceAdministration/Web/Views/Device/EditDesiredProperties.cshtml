@@ -47,6 +47,7 @@
                                                data-msg-regex=" "
                                                data-rule-regex="^desired\.\S+$"
                                                data-rule-maxtwindepth ="5"
+                                               @((IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())? "data-rule-noreserved=\"true\"":"")
                                                data-bind="value: key, disable: isUserDefinedType, css:{edit_form__deleted : isDeleted()},attr:{name: 'propertyName' + $index(), id: 'propertyName' + $index()}" />
                                     </td>
                                     <td>
@@ -117,6 +118,9 @@
         }, "");
         jQuery.validator.addMethod("maxtwindepth", function (value, element, params) {
             return this.optional(element) || value.match(/\./gi).length <= params
+        }, "");
+        jQuery.validator.addMethod("noreserved", function (value, element, params) {
+            return this.optional(element) || !/__\S+__/gi.test(value)
         }, "");
         IoTApp.EditDesiredProperties.init("@Model.DeviceId");
     });

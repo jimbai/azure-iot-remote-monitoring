@@ -47,6 +47,7 @@
                                                data-msg-regex=" "
                                                data-rule-regex="^tags\.\S+$"
                                                data-rule-maxtwindepth ="5"
+                                               @((IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())? "data-rule-noreserved=\"true\"":"")
                                                data-bind="value: key, disable: isUserDefinedType, css:{edit_form__deleted : isDeleted()}, attr:{name: 'tagName' + $index(), id: 'tagName' + $index()}" />
                                     </td>
                                     <td>
@@ -113,6 +114,9 @@
         }, "");
         jQuery.validator.addMethod("maxtwindepth", function (value, element, params) {
             return this.optional(element) || value.match(/\./gi).length <= params
+        }, "");
+        jQuery.validator.addMethod("noreserved", function (value, element, params) {
+            return this.optional(element) || !/__\S+__/gi.test(value)
         }, "");
         IoTApp.EditTags.init("@Model.DeviceId");
     });

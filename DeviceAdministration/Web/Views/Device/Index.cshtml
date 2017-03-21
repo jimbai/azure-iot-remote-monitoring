@@ -1,6 +1,7 @@
 ﻿@using GlobalResources
 @using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models
 @using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Helpers
+@using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
 @{
     ViewBag.Title = "Index";
 }
@@ -23,8 +24,7 @@
             <table id="deviceTable" class="order-column">
 
                 <thead>
-                    <tr>
-                    </tr>
+                    <tr></tr>
                 </thead>
 
                 <tbody></tbody>
@@ -40,7 +40,7 @@
                     (<span class="device_list_toolbar_number" data-bind="text: filteredInfo"></span>)
                 </div>
                 <div class="device_list_toolbar_buttons">
-                    <img id="btnOpen" src="/Content/img/open_query.svg" title="@Strings.OpenSavedFilter" class="device_list_toolbar_button" data-bind="openFilterPopover: { template: '#openfilterContent', filterNameList: filterNameList }"/>
+                    <img id="btnOpen" src="/Content/img/open_query.svg" title="@Strings.OpenSavedFilter" class="device_list_toolbar_button" data-bind="openFilterPopover: { template: '#openfilterContent', filterNameList: filterNameList }" />
                     <!--ko if: canEdit() -->
                     <img src="/Content/img/edit_filter.svg" title="@Strings.EditFilter" class="device_list_toolbar_button" data-bind="click: showPanel" />
                     <!-- /ko -->
@@ -79,7 +79,13 @@
                 <div class="filter_panel_lookup_title">@Strings.OpenSavedFilter</div>
                 <input class="filter_panel_lookup_box" id="lookupFilterBox" placeholder="@Strings.SavedFilters" data-bind="event: { keypress: lookupBoxKeypress}" />
                 <div class="filter_panel_filters" data-bind="foreach: filters">
-                    <a href="#" class="filter_panel_filter_link" data-bind="text: name, click: $parent.loadFilter.bind($data, id, true)"></a>
+                    <div>
+                        <a href="#" class="filter_panel_filter_link" data-bind="text: name, click: $parent.loadFilter.bind($data, id, true)"></a>
+                        @if (IdentityHelper.IsMultiTenantEnabled() && IdentityHelper.IsSuperAdmin())
+                        {
+                            <img src="~/Content/img/icon_info_gray.svg" class="details_grid_info tooltip_icon" data-bind="attr: { title: $data.userName }" />
+                        }
+                    </div>
                 </div>
             </div>
         </div>
@@ -118,24 +124,24 @@
                 <h3 class="grid_subheadhead_detail">@Strings.Jobs</h3>
             </div>
             <section class="details_grid_general">
-            @if (ViewBag.HasManageJobsPerm)
+                @if (ViewBag.HasManageJobsPerm)
             {
-                <p class="grid_detail_value">
-                    <a class="multi_selection_job" data-job-type="ScheduleIconUpdate">@Strings.UpdateIcon</a>
-                </p>
+                    <p class="grid_detail_value">
+                        <a class="multi_selection_job" data-job-type="ScheduleIconUpdate">@Strings.UpdateIcon</a>
+                    </p>
 
-                <p class="grid_detail_value">
-                    <a class="multi_selection_job" data-job-type="ScheduleTwinUpdate">@Strings.UpdateTwin</a>
-                </p>
+                    <p class="grid_detail_value">
+                        <a class="multi_selection_job" data-job-type="ScheduleTwinUpdate">@Strings.UpdateTwin</a>
+                    </p>
 
-                <p class="grid_detail_value">
-                    <a class="multi_selection_job" data-job-type="ScheduleDeviceMethod">@Strings.InvokeMethod</a>
-                </p>
-            }
-            else
-            {
-                <p class="grid_detail_value">@Strings.HaveNoPermissionError</p>
-            }
+                    <p class="grid_detail_value">
+                        <a class="multi_selection_job" data-job-type="ScheduleDeviceMethod">@Strings.InvokeMethod</a>
+                    </p>
+                }
+                else
+                {
+                    <p class="grid_detail_value">@Strings.HaveNoPermissionError</p>
+                }
             </section>
             <div class="device_list_columns_button_container">
                 <button type="button" onclick="IoTApp.DeviceIndex.stopMultiSelectionIfNeeded()" class="button_base">
@@ -207,7 +213,7 @@
                             <div class="filter_panel_clause_text" data-bind="text: shortDisplayName"></div>
                             @if (ViewBag.HasDeleteSuggestedClausePerm)
                             {
-                            <img class="filter_panel_clause_delete_img" title="@Strings.Delete" src="/Content/img/delete-clause.svg" data-bind="click: remove" />
+                                <img class="filter_panel_clause_delete_img" title="@Strings.Delete" src="/Content/img/delete-clause.svg" data-bind="click: remove" />
                             }
                             <img class="filter_panel_clause_right_top_img" src="/Content/img/clausechecked2.svg" />
                         </div>
@@ -327,6 +333,9 @@
         deviceSelected: '@Html.JavaScriptString(Strings.DeviceSelected)',
         devicesSelected: '@Html.JavaScriptString(Strings.DevicesSelected)',
         image: '@Html.JavaScriptString(Strings.Image)',
+        userColumnName: '@Html.JavaScriptString(Strings.UsernameLabel)',
+        showUserColumn: '@(IdentityHelper.IsMultiTenantEnabled()&&IdentityHelper.IsSuperAdmin())' === '@true',
+        userTagName: '@Html.JavaScriptString((string)ViewBag.UserTagName)',
         iconTagName: '@Html.JavaScriptString((string)ViewBag.IconTagName)',
         iconBaseUrl: '@Html.JavaScriptString((string)ViewBag.IconBaseUrl)',
         loadDefaultConfirmation: '@Html.JavaScriptString(Strings.LoadDefaultConfirmation)',

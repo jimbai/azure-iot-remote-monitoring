@@ -2,6 +2,7 @@
 @using Newtonsoft.Json
 @using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Helpers
 @using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models
+@using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
 @model Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Models.ScheduleTwinUpdateModel
 
 @{
@@ -73,6 +74,7 @@
                                                        data-msg-regex=" "
                                                        data-rule-regex="^desired\.\S+$"
                                                        data-rule-maxtwindepth="5"
+                                                       @((IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())? "data-rule-noreserved=true":"")
                                                        data-bind='value: PropertyName, css:{edit_form__deleted : isDeleted()}, attr: { name: $root.getDesiredInputPrefix($index())+".PropertyName", id: "DesiredProperties" + $index() + ".PropertyName" }' />
                                             </td>
                                             <td>
@@ -119,6 +121,7 @@
                                                        data-msg-regex=" "
                                                        data-rule-regex="^tags\.\S+$"
                                                        data-rule-maxtwindepth="5"
+                                                       @((IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())? "data-rule-noreserved=\"true\"":"")
                                                        data-bind='value: TagName, css:{edit_form__deleted : isDeleted()}, attr: { name: $root.getTagInputPrefix($index())+".TagName", id: "Tags" + $index() + ".TagName" }' />
                                             </td>
                                             <td>
@@ -209,6 +212,9 @@
         }, "");
         jQuery.validator.addMethod("maxtwindepth", function (value, element, params) {
             return this.optional(element) || value.match(/\./gi).length <= params
+        }, "");
+        jQuery.validator.addMethod("noreserved", function (value, element, params) {
+            return this.optional(element) || !/__\S+__/gi.test(value)
         }, "");
         IoTApp.ScheduleTwinUpdate.init(@Html.Raw(JsonConvert.SerializeObject(Model)));
     });

@@ -131,7 +131,7 @@
                 self.model.filters.removeAll();
                 data.forEach(function (item) {
                     if (item.id !== resources.allDevices) {
-                        self.model.filters.push({ id: item.id, name: item.name });
+                        self.model.filters.push({ id: item.id, name: item.name, userName:item.userName});
                     }
                 });
             });
