@@ -89,7 +89,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extension
             if (string.IsNullOrEmpty(flatName)) return false;
             // this line should be removed once we change it to tags.__HubEnabledState__ in the future.
             if ("tags.HubEnabledState".Equals(flatName, StringComparison.Ordinal)) return true;
-            if ("tags.__UserName__".Equals(flatName, StringComparison.Ordinal)) return false;
+            if ("tags.__UserName__".Equals(flatName, StringComparison.Ordinal)) return true;
             string[] parts = flatName.Split('.');
             return parts.Any(p => p.StartsWith("__", StringComparison.Ordinal) && p.EndsWith("__", StringComparison.Ordinal));
         }
