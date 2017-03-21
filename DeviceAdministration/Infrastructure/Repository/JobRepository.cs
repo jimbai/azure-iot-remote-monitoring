@@ -54,6 +54,16 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             return new JobRepositoryModel(entity);
         }
 
+        public async Task<IEnumerable<string>> QueryJobIDsByUserName(string userName=null)
+        {
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                userName = IdentityHelper.GetCurrentUserName();
+            }
+            var query = new TableQuery<JobTableEntity>().Where(TableQuery.GenerateFilterCondition("UserName", QueryComparisons.Equal, userName));
+            return (await _azureTableStorageClient.ExecuteQueryAsync(query))?.Select(m=>m.JobId);
+        }
+
         public async Task<IEnumerable<JobRepositoryModel>> QueryByFilterIdAsync(string filterId)
         {
             if (string.IsNullOrWhiteSpace(filterId))

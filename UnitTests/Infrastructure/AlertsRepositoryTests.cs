@@ -30,7 +30,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Infras
             var blobStorageFactory = new BlobStorageClientFactory(_blobStorageClientMock.Object);
             _configurationProviderMock.Setup(x => x.GetConfigurationSettingValue(It.IsNotNull<string>()))
                 .ReturnsUsingFixture(fixture);
-            alertsRepository = new AlertsRepository(_configurationProviderMock.Object, blobStorageFactory);
+            alertsRepository = new AlertsRepository(_configurationProviderMock.Object, blobStorageFactory,null);
         }
 
         [Fact]
