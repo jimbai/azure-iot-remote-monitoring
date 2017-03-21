@@ -34,7 +34,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
             }
             var configItem = configurationProvider.GetConfigurationSettingValue("SuperAdminList");
             var user = GetCurrentUserName();
-            return configItem.Any() && !IsSuperAdmin(configItem, user);
+            return configItem.Any();
         }
 
         public static bool IsSuperAdmin()

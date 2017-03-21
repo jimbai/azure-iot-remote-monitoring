@@ -164,6 +164,29 @@
                 .attr('title', 'tags.' + resources.iconTagName)
                 .appendTo(header);
 
+
+            if (resources.showUserColumn) {
+            columns.push({
+                data: 'twin.tags.' + resources.userTagName,
+                mRender: function (data, type, row, meta) {
+                    if (!data) {
+                        return "";
+                    }
+                    var separatorIndex = data.indexOf('@');
+                    if (separatorIndex > 0) {
+                        return htmlEncode(data.slice(0,separatorIndex));
+                    }
+                    return htmlEncode(data);
+                },
+                searchable: false,
+                orderable: false,
+            });
+            $('<th />')
+                .text(resources.userColumnName)
+                .attr('title', 'tags.' + resources.userTagName)
+                .appendTo(header);
+            };
+
             data.forEach(function (column, index) {
                 var columnOption = {
                     data:"twin." + (column.name.indexOf("reported.") === 0 || column.name.indexOf("desired.") === 0 ? "properties." : "") + column.name,
