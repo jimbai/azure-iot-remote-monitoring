@@ -101,6 +101,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                 var addnametask = _nameCacheLogic.AddNameAsync(twin.Key);
             }
             var exist = await _deviceRepositor.GetTwinAsync(deviceId);
+            if (string.IsNullOrWhiteSpace(updatetwin.Tags.Get("__UserName__")?.ToString()))
+            {
+                updatetwin.Tags.Set("__UserName__", exist.Tags.Get("__UserName__").ToString() as string);
+            }
             exist.Tags = updatetwin.Tags;
             exist.ETag = "*";
             await _deviceRepositor.UpdateTwinAsync(deviceId, exist);
