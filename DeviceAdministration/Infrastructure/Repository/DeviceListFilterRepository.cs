@@ -119,6 +119,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public async Task<bool> CheckFilterNameAsync(string name)
         {
             TableQuery<DeviceListFilterTableEntity> query = new TableQuery<DeviceListFilterTableEntity>().Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, name));
+            if (isMutliTenantEnabled && !isSuperAdmin)
+            {
+                query = new TableQuery<DeviceListFilterTableEntity>().Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, $"__{currentUserShortName}__{name}"));
+            }
             var entities = await _filterTableStorageClient.ExecuteQueryAsync(query);
             return entities.Count() > 0;
         }
@@ -147,15 +151,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
             if (filter.Name != Constants.UnnamedFilterName)
             {
-                var query = new TableQuery<DeviceListFilterTableEntity>().Where(
-                    TableQuery.CombineFilters(
-                        TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.NotEqual, filter.Id),
-                        TableOperators.And,
-                        TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, filter.Name)
-                    )
-                );
-                var entities = await _filterTableStorageClient.ExecuteQueryAsync(query);
-                if (entities.Any())
+                var dupedName = await CheckFilterNameAsync(filter.Name);
+                if (dupedName)
                 {
                     throw new FilterDuplicatedNameException(filter.Id, filter.Name);
                 }
