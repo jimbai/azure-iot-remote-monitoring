@@ -296,7 +296,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             }
         }
 
-        public async Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
+        public virtual async Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
         {
             var devices = await _documentClient.QueryAsync();
             var result = devices?.ToList();

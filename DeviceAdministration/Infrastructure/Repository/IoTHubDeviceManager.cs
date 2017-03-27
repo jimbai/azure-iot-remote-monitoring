@@ -90,6 +90,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         {
             var jobId = Guid.NewGuid().ToString();
 
+            queryCondition = MakeMutliTenantCondition(queryCondition);
+
             await this._jobClient.ScheduleTwinUpdateAsync(jobId, queryCondition, twin, startTimeUtc, maxExecutionTimeInSeconds);
 
             return jobId;
@@ -102,6 +104,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var method = new CloudToDeviceMethod(methodName);
             method.SetPayloadJson(payload);
 
+            queryCondition = MakeMutliTenantCondition(queryCondition);
+
             await this._jobClient.ScheduleDeviceMethodAsync(jobId, queryCondition, method, startTimeUtc, maxExecutionTimeInSeconds);
 
             return jobId;
@@ -109,15 +113,16 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public async Task<IEnumerable<Twin>> QueryDevicesAsync(DeviceListFilter filter, int maxDevices = 10000)
         {
-            if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
-            {
-                if (filter?.Clauses == null)
-                {
-                    filter.Clauses = new List<Clause>();
-                }
-                filter.Clauses.Add(new Clause { ColumnName = "tags.__UserName__", ClauseType = ClauseType.EQ, ClauseDataType = TwinDataType.String, ClauseValue = IdentityHelper.GetCurrentUserName() });
-            }
-            var sqlQuery = filter.GetSQLQuery();
+            //if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
+            //{
+            //    if (filter?.Clauses == null)
+            //    {
+            //        filter.Clauses = new List<Clause>();
+            //    }
+            //    filter.Clauses.Add(new Clause { ColumnName = "tags.__UserName__", ClauseType = ClauseType.EQ, ClauseDataType = TwinDataType.String, ClauseValue = IdentityHelper.GetCurrentUserName() });
+            //}
+            var sqlQuery = MakeMutliTenantCondition(filter.GetSQLQuery());
+
             var deviceQuery = this._deviceManager.CreateQuery(sqlQuery);
 
             var twins = new List<Twin>();
@@ -135,6 +140,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             {
                 throw new ArgumentException("Count column alias cannot be null or empty", "countColAlias");
             }
+            filterSQL = MakeMutliTenantCondition(filterSQL);
             var deviceQuery = this._deviceManager.CreateQuery(filterSQL);
 
             var result = new List<string>();
@@ -231,6 +237,25 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             }
 
             return results;
+        }
+
+        private string MakeMutliTenantCondition(string filterSQL)
+        {
+            if (!IdentityHelper.IsMultiTenantEnabled() || IdentityHelper.IsSuperAdmin())
+            {
+                // Add no user specified condition in non-multitenant or user not super admin
+                return filterSQL;
+            }
+            var userfiltercondition = $"tags.__UserName__ = '{ IdentityHelper.GetCurrentUserName()}'";
+            if (filterSQL.ToLower().Contains(" where "))
+            {
+                filterSQL += $" AND {userfiltercondition}";
+            }
+            else
+            {
+                filterSQL += $" WHERE {userfiltercondition}";
+            }
+            return filterSQL;
         }
 
         #region IDispose

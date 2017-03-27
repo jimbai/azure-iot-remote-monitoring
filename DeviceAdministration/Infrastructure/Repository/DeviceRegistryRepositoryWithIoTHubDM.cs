@@ -1,13 +1,12 @@
-﻿using System;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
+﻿using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.Azure.Devices.Shared;
-using System.Configuration;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -155,6 +154,26 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         {
            await  base.UpdateTwinAsync(deviceId, twin);
             await _deviceManager.UpdateTwinAsync( deviceId,  twin);
+        }
+
+        public override async Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
+        {
+            var devices = await _deviceManager.QueryDevicesAsync(new DeviceListFilter
+            {
+                Id = "00000000-0000-0000-0000-000000000000",
+                Name = "All Devices",
+                Clauses = new List<Clause>()
+            });
+            var result = devices?.ToList();
+            if (result?.Count > 0 && IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
+            {
+                if (string.IsNullOrWhiteSpace(userName))
+                {
+                    userName = IdentityHelper.GetCurrentUserName();
+                }
+                return result.Where(m => m.Tags.Get("__UserName__")?.ToString() == userName)?.Select(m => m.DeviceId);
+            }
+            return null;
         }
     }
 }
