@@ -1,17 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
+﻿using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Exceptions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
-using System.Web;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
 using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -85,7 +84,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             currentUserName = IdentityHelper.GetCurrentUserName();
             currentUserShortName = IdentityHelper.GetUserShortName();
 
-
             var task = InitializeDefaultFilter();
         }
 
@@ -118,10 +116,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public async Task<bool> CheckFilterNameAsync(string name)
         {
-            TableQuery<DeviceListFilterTableEntity> query = new TableQuery<DeviceListFilterTableEntity>().Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, name));
+            TableQuery<DeviceListFilterTableEntity> query = null;
             if (isMutliTenantEnabled && !isSuperAdmin)
             {
                 query = new TableQuery<DeviceListFilterTableEntity>().Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, $"__{currentUserShortName}__{name}"));
+            }
+            else
+            {
+                new TableQuery<DeviceListFilterTableEntity>().Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, name));
             }
             var entities = await _filterTableStorageClient.ExecuteQueryAsync(query);
             return entities.Count() > 0;
@@ -151,8 +153,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
             if (filter.Name != Constants.UnnamedFilterName)
             {
-                var dupedName = await CheckFilterNameAsync(filter.Name);
-                if (dupedName)
+                if (await CheckFilterNameAsync(filter.Name))
                 {
                     throw new FilterDuplicatedNameException(filter.Id, filter.Name);
                 }
