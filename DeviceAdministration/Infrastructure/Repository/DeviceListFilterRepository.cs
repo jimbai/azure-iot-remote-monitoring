@@ -25,7 +25,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         private readonly bool isMutliTenantEnabled = false;
         private readonly bool isSuperAdmin = false;
         private readonly string currentUserName;
-        private readonly string currentUserShortName;
 
         private static object _initializeLock = new object();
         private static bool DefaultFilterInitialized = false;
@@ -82,7 +81,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             isMutliTenantEnabled = IdentityHelper.IsMultiTenantEnabled();
             isSuperAdmin = IdentityHelper.IsSuperAdmin();
             currentUserName = IdentityHelper.GetCurrentUserName();
-            currentUserShortName = IdentityHelper.GetUserShortName();
 
             var task = InitializeDefaultFilter();
         }
@@ -113,18 +111,25 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                     BuildFilterModelFromEntity);
             }
         }
-
         public async Task<bool> CheckFilterNameAsync(string name)
         {
-            TableQuery<DeviceListFilterTableEntity> query = null;
-            if (isMutliTenantEnabled && !isSuperAdmin)
-            {
-                query = new TableQuery<DeviceListFilterTableEntity>().Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, $"__{currentUserShortName}__{name}"));
-            }
-            else
-            {
-                new TableQuery<DeviceListFilterTableEntity>().Where(TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, name));
-            }
+            return await CheckFilterNameAsync(name, null, currentUserName);
+        }
+
+        public async Task<bool> CheckFilterNameAsync(string name, string filterId, string userName)
+        {
+            
+            var rowkeyFilter = isMutliTenantEnabled && !isSuperAdmin ?
+                TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, $"__{IdentityHelper.GetUserShortName(userName)}__{name}") :
+                TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, name);
+
+            // Check whether other filter(not same filterId) have same filter name
+            var partitonkeyFilter = !string.IsNullOrEmpty(filterId) ? TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.NotEqual, filterId) : "";
+
+            // Combain both rowkey and partitonkey filter
+            TableQuery<DeviceListFilterTableEntity> query = new TableQuery<DeviceListFilterTableEntity>()
+                                                            .Where(TableQuery.CombineFilters(rowkeyFilter, TableOperators.And, partitonkeyFilter));
+
             var entities = await _filterTableStorageClient.ExecuteQueryAsync(query);
             return entities.Count() > 0;
         }
@@ -143,7 +148,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             if (oldFilter == null)
             {
                 filter.Id = Guid.NewGuid().ToString();
-                filter.UserName = IdentityHelper.GetCurrentUserName();
+                filter.UserName = (isMutliTenantEnabled && !isSuperAdmin)? IdentityHelper.GetCurrentUserName():"*";
             }
             else
             {
@@ -151,9 +156,15 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 if (!force) return oldFilter;
             }
 
+            if ((isMutliTenantEnabled && !isSuperAdmin) && filter.UserName != currentUserName)
+            {
+                // Throw exception when current user dose not match saved filter owner
+                throw new FilterSaveException(filter.Id, filter.Name);
+            }
+
             if (filter.Name != Constants.UnnamedFilterName)
             {
-                if (await CheckFilterNameAsync(filter.Name))
+                if (await CheckFilterNameAsync(filter.Name, filter.Id, filter.UserName))
                 {
                     throw new FilterDuplicatedNameException(filter.Id, filter.Name);
                 }
@@ -265,7 +276,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
             var tasks = clauses.Select(async clause =>
             {
-                var newClause = new ClauseTableEntity(clause) { ETag = "*" , UserName = IdentityHelper.GetCurrentUserName() };
+                var newClause = new ClauseTableEntity(clause) { ETag = "*" , UserName = (isMutliTenantEnabled && !isSuperAdmin)? IdentityHelper.GetCurrentUserName():"*" };
                 TableQuery<ClauseTableEntity> query = new TableQuery<ClauseTableEntity>()
                     .Where(TableQuery.GenerateFilterCondition("PartitionKey", QueryComparisons.Equal, newClause.PartitionKey));
                 var clauseEntities = await _clauseTableStorageClient.ExecuteQueryAsync(query);
@@ -384,13 +395,13 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             };
         }
 
-        private DeviceListFilterTableEntity BuildNewEntityForFilter(DeviceListFilter filter)
+        internal DeviceListFilterTableEntity BuildNewEntityForFilter(DeviceListFilter filter)
         {
             var newfilterName = filter.Name;
             var newUsername = string.IsNullOrEmpty(filter.UserName) ? "*" : filter.UserName;
-            if (isMutliTenantEnabled && !isSuperAdmin)
+            if ("*" != newUsername)
             {
-                newfilterName = $"__{currentUserShortName}__{filter.Name}";
+                newfilterName = $"__{IdentityHelper.GetUserShortName(newUsername)}__{filter.Name}";
             }
             return new DeviceListFilterTableEntity(filter) {RowKey=newfilterName, Name=newfilterName, UserName = newUsername, ETag="*" };
         }

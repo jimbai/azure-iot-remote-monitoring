@@ -43,7 +43,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         /// <returns>
         /// The latest Device Alert History items.
         /// </returns>
-        public async Task<IEnumerable<AlertHistoryItemModel>> LoadLatestAlertHistoryAsync(DateTime minTime, int minResults)
+        public async Task<IEnumerable<AlertHistoryItemModel>> LoadLatestAlertHistoryAsync(DateTime minTime, int minResults, Func<AlertHistoryItemModel, bool> entityFilter = null)
         {
             if (minResults <= 0)
             {
@@ -53,7 +53,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                     "minResults must be a positive integer.");
             }
 
-            return await this.alertsRepository.LoadLatestAlertHistoryAsync(minTime, minResults);
+            return await this.alertsRepository.LoadLatestAlertHistoryAsync(minTime, minResults, entityFilter);
         }
     }
 }

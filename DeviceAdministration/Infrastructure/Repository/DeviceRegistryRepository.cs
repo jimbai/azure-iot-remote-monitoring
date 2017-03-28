@@ -298,17 +298,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public virtual async Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
         {
-            var devices = await _documentClient.QueryAsync();
-            var result = devices?.ToList();
-            if (result?.Count > 0 && IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
-            {
-                if (string.IsNullOrWhiteSpace(userName))
-                {
-                    userName = IdentityHelper.GetCurrentUserName();
-                }
-                return result.Where(m => m.Twin.Tags.Get("__UserName__")?.ToString() == userName)?.Select(m => m.DeviceProperties.DeviceID);
-            }
-            return null;
+            throw new NotImplementedException();
         }
 
         public virtual  async Task UpdateTwinAsync(string deviceId, Twin twin)

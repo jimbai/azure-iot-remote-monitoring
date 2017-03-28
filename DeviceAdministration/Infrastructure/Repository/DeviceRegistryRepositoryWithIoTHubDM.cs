@@ -110,7 +110,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                         return null;
                     }
                 }).Where(model => model != null).ToList(),
-                TotalDeviceCount = (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())? devicesList.Count(m=> IdentityHelper.GetCurrentUserName()==(m.Twin.Tags.Get("__UserName__")?.ToString() as string)) : (int)await this._deviceManager.GetDeviceCountAsync(),
+                TotalDeviceCount = (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())? devicesList.Count(m=> IdentityHelper.GetCurrentUserName()==(m.Twin?.Tags.Get("__UserName__")?.ToString() as string)) : (int)await this._deviceManager.GetDeviceCountAsync(),
                 TotalFilteredCount = filteredDevices.Count()
             };
         }
@@ -158,22 +158,21 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public override async Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
         {
+            if (string.IsNullOrWhiteSpace(userName))
+            {
+                userName = IdentityHelper.GetCurrentUserName();
+            }
+
             var devices = await _deviceManager.QueryDevicesAsync(new DeviceListFilter
             {
                 Id = "00000000-0000-0000-0000-000000000000",
                 Name = "All Devices",
                 Clauses = new List<Clause>()
-            });
-            var result = devices?.ToList();
-            if (result?.Count > 0 && IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
-            {
-                if (string.IsNullOrWhiteSpace(userName))
                 {
-                    userName = IdentityHelper.GetCurrentUserName();
+                    new Clause() {ColumnName = "tags.__UserName__" , ClauseType= ClauseType.EQ, ClauseValue = userName}
                 }
-                return result.Where(m => m.Tags.Get("__UserName__")?.ToString() == userName)?.Select(m => m.DeviceId);
-            }
-            return null;
+            });
+            return devices?.Select(m=>m.DeviceId).ToList();
         }
     }
 }

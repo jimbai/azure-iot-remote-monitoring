@@ -335,6 +335,8 @@
         image: '@Html.JavaScriptString(Strings.Image)',
         userColumnName: '@Html.JavaScriptString(Strings.UsernameLabel)',
         showUserColumn: '@(IdentityHelper.IsMultiTenantEnabled()&&IdentityHelper.IsSuperAdmin())' === '@true',
+        disableDefaultfilterEdit: '@(IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())' === '@true',
+        currentUsername: '@Html.JavaScriptString(IdentityHelper.GetCurrentUserName())',
         userTagName: '@Html.JavaScriptString((string)ViewBag.UserTagName)',
         iconTagName: '@Html.JavaScriptString((string)ViewBag.IconTagName)',
         iconBaseUrl: '@Html.JavaScriptString((string)ViewBag.IconBaseUrl)',
