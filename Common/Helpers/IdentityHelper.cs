@@ -16,9 +16,9 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
             return System.Web.HttpContext.Current?.User.Identity.Name ?? string.Empty;
         }
 
-        public static string GetUserShortName()
+        public static string GetUserShortName(string longname = null)
         {
-            string longname = GetCurrentUserName();
+            longname = longname == null ? GetCurrentUserName() : longname;
             if (longname.Contains('@'))
             {
                 return longname.Split('@')[0];
@@ -43,7 +43,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
             return IsSuperAdmin(configurationProvider.GetConfigurationSettingValue("SuperAdminList"), GetCurrentUserName());
         }
 
-        public static bool IsSuperAdmin(string configValue, string currentAlias)
+        internal static bool IsSuperAdmin(string configValue, string currentAlias)
         {
             char[] separator = { ',', ';', ' ' };
             var allAdmin = configValue.Split(separator, StringSplitOptions.RemoveEmptyEntries);

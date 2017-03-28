@@ -236,10 +236,24 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                     var deviceModels = new List<AlertHistoryDeviceModel>();
                     var resultsModel = new AlertHistoryResultsModel();
 
-                    IEnumerable<AlertHistoryItemModel> data =
-                        await _alertsLogic.LoadLatestAlertHistoryAsync(
-                            currentTime.Subtract(CautionAlertMaxDelta), 
+                    IEnumerable<AlertHistoryItemModel> data = null;
+                        
+                    if (IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
+                    {
+                        var deviceIds = await _deviceLogic.GetDeviceIdsByUserName();
+                        Func<AlertHistoryItemModel, bool> filter = entity => deviceIds.Contains(entity.DeviceId);
+                        data = await _alertsLogic.LoadLatestAlertHistoryAsync(
+                            currentTime.Subtract(CautionAlertMaxDelta),
+                            DISPLAYED_HISTORY_ITEMS,
+                            filter
+                            );
+                    }
+                    else
+                    {
+                        data = await _alertsLogic.LoadLatestAlertHistoryAsync(
+                            currentTime.Subtract(CautionAlertMaxDelta),
                             DISPLAYED_HISTORY_ITEMS);
+                    }
 
                     if (data != null)
                     {

@@ -24,5 +24,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         DeviceListLocationsModel ExtractLocationsData(List<DeviceModel> devices);
         IList<DeviceTelemetryFieldModel> ExtractTelemetry(DeviceModel device);
         Task AddToNameCache(string deviceId);
+        Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null);
     }
 }

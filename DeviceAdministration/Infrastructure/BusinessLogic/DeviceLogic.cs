@@ -941,5 +941,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 await _nameCacheLogic.AddMethodAsync(command);
             }
         }
+
+        public virtual Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

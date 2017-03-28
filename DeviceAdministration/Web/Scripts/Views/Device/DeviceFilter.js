@@ -11,6 +11,7 @@
         advancedClause: ko.observable(null),
         clauses: ko.observableArray([]),
         associatedJobsCount:ko.observable(0),
+        userName:ko.observable(null),
 
         isFilterLoaded: ko.observable(false),
         isFilterLoadedFromServer: ko.observable(false),
@@ -39,7 +40,7 @@
             }
         }),
         isDefatulFilter: ko.pureComputed(function () {
-            return self.model.id() == defaultFilterId;
+            return (resources.disableDefaultfilterEdit && self.model.userName() != resources.currentUsername) || self.model.id() == defaultFilterId;
         }),
         canSave: ko.pureComputed(function () {
             return self.model.canSaveAs() && !self.model.associatedJobsCount();
@@ -131,7 +132,7 @@
                 self.model.filters.removeAll();
                 data.forEach(function (item) {
                     if (item.id !== resources.allDevices) {
-                        self.model.filters.push({ id: item.id, name: item.name, userName:item.userName});
+                        self.model.filters.push({ id: item.id, name: item.name, userName: item.userName});
                     }
                 });
             });
@@ -317,6 +318,7 @@
                 self.model.isAdvanced(filter.isAdvanced);
                 self.model.advancedClause(filter.advancedClause);
                 self.model.associatedJobsCount(filter.associatedJobsCount);
+                self.model.userName(filter.userName);
                 self.model.viewSelectedClausesOnly(false);
                 self.model.clauses.removeAll();
                 self.model.suggestedClauses.forEach(function (item) {
@@ -352,7 +354,8 @@
                 clauses: [],
                 isAdvanced: false,
                 advancedClause: "",
-                associatedJobsCount: 0
+                associatedJobsCount: 0,
+                userName: resources.currentUsername
             });
             self.model.isChanged(true);
         },

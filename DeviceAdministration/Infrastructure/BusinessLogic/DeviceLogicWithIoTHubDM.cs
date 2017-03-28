@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
@@ -15,6 +16,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
     public class DeviceLogicWithIoTHubDM : DeviceLogic
     {
         private readonly IConfigurationProvider _configProvider;
+        private readonly IDeviceRegistryCrudRepository _deviceRepository;
 
         public DeviceLogicWithIoTHubDM(IIotHubRepository iotHubRepository, IDeviceRegistryCrudRepository deviceRegistryCrudRepository,
             IDeviceRegistryListRepository deviceRegistryListRepository, IVirtualDeviceStorage virtualDeviceStorage,
@@ -23,6 +25,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             base(iotHubRepository, deviceRegistryCrudRepository, deviceRegistryListRepository, virtualDeviceStorage, securityKeyGenerator, configProvider, deviceRulesLogic, nameCacheLogic, deviceListFilterRepository)
         {
             _configProvider = configProvider;
+            _deviceRepository = deviceRegistryCrudRepository;
         }
 
         // Copy values from view model to twin
@@ -130,6 +133,11 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             }
 
             return propValModels;
+        }
+
+        public override Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
+        {
+            return _deviceRepository.GetDeviceIdsByUserName(userName);
         }
 
         private PropertyType GetObjectType(JValue val)

@@ -69,7 +69,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         /// </returns>
         public async Task<IEnumerable<AlertHistoryItemModel>> LoadLatestAlertHistoryAsync(
             DateTime minTime,
-            int minResults)
+            int minResults,
+            Func<AlertHistoryItemModel, bool> entityFilter = null)
         {
             if (minResults <= 0)
             {
@@ -79,26 +80,19 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var filteredResult = new List<AlertHistoryItemModel>();
             var unfilteredResult = new List<AlertHistoryItemModel>();
             Func<AlertHistoryItemModel, bool> predicate = a => true;
-            var alertBlobReaderTask = _blobStorageManager.GetReader(deviceAlertsDataPrefix);
-            if (IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
-            {
-                var deviceidsTask = _deviceRepository.GetDeviceIdsByUserName();
-                await Task.WhenAll(alertBlobReaderTask, deviceidsTask);
-                predicate = m => deviceidsTask.Result?.Contains(m.DeviceId) == true;
-            }
-            else
-            {
-                await alertBlobReaderTask;
-            }
-           
+            var alertBlobReader = await _blobStorageManager.GetReader(deviceAlertsDataPrefix);
 
-            foreach (var alertStream in alertBlobReaderTask.Result)
+            foreach (var alertStream in alertBlobReader)
             {
                 var segment = ProduceAlertHistoryItemsAsync(alertStream.Data);
 
                 // filter segment
-                segment = segment.Where(predicate)?.ToList();
-                if (segment?.Count < 1)
+                if (entityFilter != null)
+                {
+                    segment = segment.Where(entityFilter).ToList();
+                }
+
+                if (segment.Count < 1)
                 {
                     continue;
                 }
