@@ -26,6 +26,11 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
             return longname;
         }
 
+        public static bool IsOtherUserInvisible()
+        {
+            return IsMultiTenantEnabled() && !IsSuperAdmin();
+        }
+
         public static bool IsMultiTenantEnabled(IConfigurationProvider configurationProvider = null)
         {
             if (configurationProvider == null)
