@@ -9,6 +9,7 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -75,7 +76,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         /// <returns>true if succeeded, false if failed.</returns>
         public async Task<bool> AddNameAsync(NameCacheEntityType entityType, NameCacheEntity entity)
         {
-            if (IdentityHelper.IsMultiTenantEnabled() && entity.Name.Contains("__UserName__"))
+            if (IdentityHelper.IsMultiTenantEnabled() && entity.Name.Contains(WebConstants.DeviceUserTagName))
             {
                 return true;
             }
@@ -102,7 +103,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             CheckSingleEntityType(entityType);
             if (IdentityHelper.IsMultiTenantEnabled())
             {
-                names = names.Where(m => !m.Contains("__UserName__"));
+                names = names.Where(m => !m.Contains(WebConstants.DeviceUserTagName));
             }
             var operations = names.Select(name => TableOperation.InsertOrReplace(new NameCacheTableEntity(entityType, name)
             {

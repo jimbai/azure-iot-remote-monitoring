@@ -238,7 +238,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
 
                     IEnumerable<AlertHistoryItemModel> data = null;
                         
-                    if (IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
+                    if (IdentityHelper.IsOtherUserInvisible())
                     {
                         var deviceIds = await _deviceLogic.GetDeviceIdsByUserName();
                         Func<AlertHistoryItemModel, bool> filter = entity => deviceIds.Contains(entity.DeviceId);

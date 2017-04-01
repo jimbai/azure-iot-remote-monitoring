@@ -2,6 +2,8 @@
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models.Commands;
 using Microsoft.Azure.Devices.Shared;
 using Newtonsoft.Json;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models
 {
@@ -17,6 +19,13 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models
             Telemetry = new List<Telemetry>();
         }
 
+        public void AddCreatorIfNeeded()
+        {
+            if (IdentityHelper.IsMultiTenantEnabled())
+            {
+                Twin.Tags.Set("__UsserName__", IdentityHelper.GetCurrentUserName());
+            }
+        }
         /// <summary>
         /// Start from version 1.6, device properties in this class will be ignored.
         /// Please use 'reported properties' of twin to report properties

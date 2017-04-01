@@ -9,6 +9,7 @@ using Microsoft.Azure.Devices.Shared;
 using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -21,10 +22,9 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         private readonly RegistryManager _deviceManager;
         private readonly ServiceClient _serviceClient;
         private readonly JobClient _jobClient;
-        private readonly IJobRepository _jobRepository;
         private bool _disposed;
 
-        public IoTHubDeviceManager(IConfigurationProvider configProvider, IJobRepository jobRepository)
+        public IoTHubDeviceManager(IConfigurationProvider configProvider)
         {
             // Temporary code to bypass https cert validation till DNS on IotHub is configured
             ServicePointManager.ServerCertificateValidationCallback = (sender, certificate, chain, errors) => true;
@@ -32,7 +32,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             this._deviceManager = RegistryManager.CreateFromConnectionString(iotHubConnectionString);
             this._serviceClient = ServiceClient.CreateFromConnectionString(iotHubConnectionString);
             this._jobClient = JobClient.CreateFromConnectionString(iotHubConnectionString);
-            _jobRepository = jobRepository;
         }
 
         public async Task<Device> AddDeviceAsync(Device device)
@@ -193,34 +192,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             return await this._jobClient.GetJobAsync(jobId);
         }
 
-        public async Task<IEnumerable<JobResponse>> GetJobResponsesByStatus(JobStatus status)
-        {
-            JobStatus? queryStatus = status;
-
-            // [WORDAROUND] 'Scheduled' is not available for query. Query all jobs then filter at application level as workaround
-            if (status == JobStatus.Scheduled)
-            {
-                queryStatus = null;
-            }
-
-            var jobs = new List<JobResponse>();
-            
-            var query = this._jobClient.CreateQuery(null, queryStatus);
-            Func<JobResponse, bool> predicate = j => j.Status == status;
-            if (IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
-            {
-                var jobIds = await _jobRepository.QueryJobIDsByUserName();
-                predicate = j => j.Status == status&&(jobIds?.Contains(j.JobId) == true);
-            }
-            while (query.HasMoreResults)
-            {
-                var result = await query.GetNextAsJobResponseAsync();
-                jobs.AddRange(result.Where(predicate));
-            }
-
-            return jobs;
-        }
-
         public async Task<JobResponse> CancelJobByJobIdAsync(string jobId)
         {
             return await this._jobClient.CancelJobAsync(jobId);
@@ -241,12 +212,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         private string MakeMutliTenantCondition(string filterSQL)
         {
-            if (!IdentityHelper.IsMultiTenantEnabled() || IdentityHelper.IsSuperAdmin())
+            if (!IdentityHelper.IsOtherUserInvisible())
             {
                 // Add no user specified condition in non-multitenant or user not super admin
                 return filterSQL;
             }
-            var userfiltercondition = $"tags.__UserName__ = '{ IdentityHelper.GetCurrentUserName()}'";
+            var userfiltercondition = $"tags.{WebConstants.DeviceUserTagName} = '{ IdentityHelper.GetCurrentUserName()}'";
             if (filterSQL.ToLower().Contains(" where "))
             {
                 filterSQL += $" AND {userfiltercondition}";

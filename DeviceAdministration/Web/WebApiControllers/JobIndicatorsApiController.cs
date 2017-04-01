@@ -14,11 +14,11 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
 {
     public class JobIndicatorsApiController : WebApiControllerBase
     {
-        private readonly IIoTHubDeviceManager _iotHubDeviceManager;
+        private readonly IJobRepository _jobRepository;
 
-        public JobIndicatorsApiController(IIoTHubDeviceManager iotHubDeviceManager)
+        public JobIndicatorsApiController(IJobRepository iotHubDeviceManager)
         {
-            _iotHubDeviceManager = iotHubDeviceManager;
+            _jobRepository = iotHubDeviceManager;
         }
 
         [HttpGet]
@@ -99,14 +99,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
 
         private async Task<int> GetJobCountByStatusAsync(JobStatus status)
         {
-            var jobs = await _iotHubDeviceManager.GetJobResponsesByStatus(status);
+            var jobs = await _jobRepository.GetJobResponsesByStatus(status);
 
             return jobs.Count();
         }
 
         private async Task<int> GetJobCountByStatusAndTimespanAsync(JobStatus status, TimeSpan timespan)
         {
-            var jobs = await _iotHubDeviceManager.GetJobResponsesByStatus(status);
+            var jobs = await _jobRepository.GetJobResponsesByStatus(status);
 
             var timeLimit = DateTime.UtcNow - timespan;
             return jobs.Count(j => j.CreatedTimeUtc >= timeLimit);
