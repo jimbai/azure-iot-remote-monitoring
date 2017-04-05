@@ -17,13 +17,13 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
     [RoutePrefix("api/v1/devices")]
     public class DeviceTwinApiController : WebApiControllerBase
     {
+        private IIoTHubDeviceManager _deviceManager;
         private INameCacheLogic _nameCacheLogic;
-        private IDeviceRegistryCrudRepository _deviceRepositor;
 
-        public DeviceTwinApiController(IIoTHubDeviceManager deviceManager, INameCacheLogic nameCacheLogic, IDeviceRegistryCrudRepository deviceRepositor)
+        public DeviceTwinApiController(IIoTHubDeviceManager deviceManager, INameCacheLogic nameCacheLogic)
         {
+            this._deviceManager = deviceManager;
             this._nameCacheLogic = nameCacheLogic;
-            _deviceRepositor = deviceRepositor;
         }
 
         [HttpGet]
@@ -31,7 +31,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         [WebApiRequirePermission(Permission.ViewDevices)]
         public async Task<HttpResponseMessage> GetDeviceTwinDesired(string deviceId)
         {
-            var twin = await this._deviceRepositor.GetTwinAsync(deviceId);
+            var twin = await this._deviceManager.GetTwinAsync(deviceId);
             IEnumerable<KeyValuePair<string, TwinCollectionExtension.TwinValue>> flattenReportedTwin = twin.Properties.Reported.AsEnumerableFlatten("reported.").Where(t => !t.Key.IsReservedTwinName());
             IEnumerable<KeyValuePair<string, TwinCollectionExtension.TwinValue>> flattenTwin = twin.Properties.Desired.AsEnumerableFlatten("desired.").Where(t => !t.Key.IsReservedTwinName());
             return await GetServiceResponseAsync<dynamic>(async () =>
@@ -45,7 +45,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         [WebApiRequirePermission(Permission.ViewDevices)]
         public async Task<HttpResponseMessage> GetDeviceTwinTag(string deviceId)
         {
-            var twin = await this._deviceRepositor.GetTwinAsync(deviceId);
+            var twin = await this._deviceManager.GetTwinAsync(deviceId);
             IEnumerable<KeyValuePair<string, TwinCollectionExtension.TwinValue>> flattenTwin = twin.Tags.AsEnumerableFlatten("tags.").Where(t => !t.Key.IsReservedTwinName());
             return await GetServiceResponseAsync<IEnumerable<KeyValuePair<string, TwinCollectionExtension.TwinValue>>>(async () =>
             {
@@ -60,6 +60,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         {
 
             Twin updatetwin = new Twin();
+            updatetwin.ETag = "*";
             foreach (var twin in newtwin)
             {
                 if (String.IsNullOrEmpty(twin.Key))
@@ -74,10 +75,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                 setTwinProperties(twin, updatetwin.Properties.Desired, key);
                 var addnametask = _nameCacheLogic.AddNameAsync(twin.Key);
             }
-            var exist = await _deviceRepositor.GetTwinAsync(deviceId);
-            exist.Properties.Desired = updatetwin.Properties.Desired;
-            exist.ETag = "*";
-            await _deviceRepositor.UpdateTwinAsync(deviceId, exist);
+            await _deviceManager.UpdateTwinAsync(deviceId, updatetwin);
         }
 
         [HttpPut]
@@ -86,6 +84,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         public async Task UpdateDeviceTwinTags(string deviceId, IEnumerable<PropertyViewModel> newtwin)
         {
             Twin updatetwin = new Twin();
+            updatetwin.ETag = "*";
             foreach (var twin in newtwin)
             {
                 if (String.IsNullOrEmpty(twin.Key))
@@ -100,14 +99,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                 setTwinProperties(twin, updatetwin.Tags, key);
                 var addnametask = _nameCacheLogic.AddNameAsync(twin.Key);
             }
-            var exist = await _deviceRepositor.GetTwinAsync(deviceId);
-            if (string.IsNullOrWhiteSpace(updatetwin.Tags.Get("__UserName__")?.ToString()))
-            {
-                updatetwin.Tags.Set("__UserName__", exist.Tags.Get("__UserName__").ToString() as string);
-            }
-            exist.Tags = updatetwin.Tags;
-            exist.ETag = "*";
-            await _deviceRepositor.UpdateTwinAsync(deviceId, exist);
+            await _deviceManager.UpdateTwinAsync(deviceId, updatetwin);
         }
 
         private void setTwinProperties(PropertyViewModel twin, TwinCollection prop, string key)

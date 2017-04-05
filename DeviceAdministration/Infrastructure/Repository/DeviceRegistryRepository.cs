@@ -191,14 +191,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public virtual async Task<DeviceListFilterResult> GetDeviceList(DeviceListFilter filter)
         {
             List<DeviceModel> deviceList = await this.GetAllDevicesAsync();
-            if (IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
-            {
-                if (filter?.Clauses == null)
-                {
-                    filter.Clauses = new List<Clause>();
-                }
-                filter.Clauses.Add(new Clause { ColumnName = "tags.__UserName__", ClauseType = ClauseType.EQ, ClauseDataType = TwinDataType.String, ClauseValue = IdentityHelper.GetCurrentUserName() });
-            }
+        
             IQueryable<DeviceModel> filteredDevices = FilterHelper.FilterDeviceList(deviceList.AsQueryable<DeviceModel>(), filter.Clauses);
 
             IQueryable<DeviceModel> filteredAndSearchedDevices = this.SearchDeviceList(filteredDevices, filter.SearchQuery);
