@@ -1,4 +1,5 @@
-﻿using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
+﻿using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
@@ -94,7 +95,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var devicesList = (await queryTask).ToList();
             var devicesFromDocDB = devicesList.Where(x => deviceIds.Contains(x.DeviceProperties.DeviceID))
                 .ToDictionary(d => d.DeviceProperties.DeviceID);
-
+            var countAlias = "total";
+            var deviceCountQueryString = $"SELECT COUNT() AS {countAlias} FROM devices WHERE {filter.GetSQLCondition()}";
             return new DeviceListFilterResult
             {
                 Results = pagedDeviceList.Select(twin =>
@@ -110,7 +112,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                         return null;
                     }
                 }).Where(model => model != null).ToList(),
-                TotalDeviceCount = (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())? devicesList.Count(m=> IdentityHelper.GetCurrentUserName()==(m.Twin?.Tags.Get("__UserName__")?.ToString() as string)) : (int)await this._deviceManager.GetDeviceCountAsync(),
+                TotalDeviceCount = (IdentityHelper.IsOtherUserInvisible())? (int)await this._deviceManager.GetDeviceCountAsync(deviceCountQueryString,countAlias) : (int)await this._deviceManager.GetDeviceCountAsync(),
                 TotalFilteredCount = filteredDevices.Count()
             };
         }
@@ -169,7 +171,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 Name = "All Devices",
                 Clauses = new List<Clause>()
                 {
-                    new Clause() {ColumnName = "tags.__UserName__" , ClauseType= ClauseType.EQ, ClauseValue = userName}
+                    new Clause() {ColumnName = $"tags.{WebConstants.DeviceUserTagName}" , ClauseType= ClauseType.EQ, ClauseValue = userName}
                 }
             });
             return devices?.Select(m=>m.DeviceId).ToList();

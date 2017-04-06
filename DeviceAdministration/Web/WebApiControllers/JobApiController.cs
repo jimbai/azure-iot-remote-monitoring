@@ -42,7 +42,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                 var sortedJobs = jobResponses.Select(r => new DeviceJobModel(r)).OrderByDescending(j => j.StartTime).ToList();
                 var tasks = sortedJobs.Select(job => AddMoreDetailsToJobAsync(job));
                 await Task.WhenAll(tasks);
-                if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
+                if (IdentityHelper.IsOtherUserInvisible())
                 {
                     sortedJobs = sortedJobs.Where(job => job.CreatorName == user).ToList();
                 }

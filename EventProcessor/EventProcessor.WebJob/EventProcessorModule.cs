@@ -36,7 +36,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.EventProcessor.W
             builder.RegisterType<NameCacheLogic>().As<INameCacheLogic>();
             builder.RegisterType<NameCacheRepository>().As<INameCacheRepository>();
             builder.RegisterType<DeviceListFilterRepository>().As<IDeviceListFilterRepository>();
-            builder.RegisterType<JobRepository>().As<IJobRepository>();
         }
     }
 }

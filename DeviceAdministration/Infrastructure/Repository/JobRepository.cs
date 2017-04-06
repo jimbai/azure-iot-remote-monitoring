@@ -14,12 +14,16 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
     public class JobRepository : IJobRepository
     {
         private readonly IAzureTableStorageClient _azureTableStorageClient;
+        private readonly JobClient _jobClient;
 
         public JobRepository(IConfigurationProvider configurationProvider, IAzureTableStorageClientFactory tableStorageClientFactory)
         {
             var connectionString = configurationProvider.GetConfigurationSettingValue("device.StorageConnectionString");
             var tableName = configurationProvider.GetConfigurationSettingValueOrDefault("JobTableName", "JobList");
+            var iotHubConnectionString = configurationProvider.GetConfigurationSettingValue("iotHub.ConnectionString");
             _azureTableStorageClient = tableStorageClientFactory.CreateClient(connectionString, tableName);
+            _jobClient = JobClient.CreateFromConnectionString(iotHubConnectionString);
+
         }
 
         public async Task AddAsync(JobRepositoryModel job)
@@ -52,6 +56,34 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var entity = await GetEntityAsync(jobId);
 
             return new JobRepositoryModel(entity);
+        }
+
+        public async Task<IEnumerable<JobResponse>> GetJobResponsesByStatus(JobStatus status)
+        {
+            JobStatus? queryStatus = status;
+
+            // [WORDAROUND] 'Scheduled' is not available for query. Query all jobs then filter at application level as workaround
+            if (status == JobStatus.Scheduled)
+            {
+                queryStatus = null;
+            }
+
+            var jobs = new List<JobResponse>();
+
+            var query = this._jobClient.CreateQuery(null, queryStatus);
+            Func<JobResponse, bool> predicate = j => j.Status == status;
+            if (IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
+            {
+                var jobIds = await QueryJobIDsByUserName();
+                predicate = j => j.Status == status && (jobIds?.Contains(j.JobId) == true);
+            }
+            while (query.HasMoreResults)
+            {
+                var result = await query.GetNextAsJobResponseAsync();
+                jobs.AddRange(result.Where(predicate));
+            }
+
+            return jobs;
         }
 
         public async Task<IEnumerable<string>> QueryJobIDsByUserName(string userName=null)

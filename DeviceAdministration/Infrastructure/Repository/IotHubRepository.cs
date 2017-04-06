@@ -31,10 +31,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         /// <returns></returns>
         public async Task<DeviceModel> AddDeviceAsync(DeviceModel device, SecurityKeys securityKeys)
         {
-            if (IdentityHelper.IsMultiTenantEnabled())
-            {
-                device.Twin.Tags.Set("__UserName__", IdentityHelper.GetCurrentUserName());
-            }
+            device.AddCreatorIfNeeded();
             var iotHubDevice = new Device(device.DeviceProperties.DeviceID)
             {
                 Authentication = new AuthenticationMechanism
