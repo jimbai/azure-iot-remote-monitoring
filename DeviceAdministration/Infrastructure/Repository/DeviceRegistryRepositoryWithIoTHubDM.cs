@@ -96,7 +96,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var devicesFromDocDB = devicesList.Where(x => deviceIds.Contains(x.DeviceProperties.DeviceID))
                 .ToDictionary(d => d.DeviceProperties.DeviceID);
             var countAlias = "total";
-            var deviceCountQueryString = $"SELECT COUNT() AS {countAlias} FROM devices WHERE {filter.GetSQLCondition()}";
+            string filterSql = filter.GetSQLCondition();
+            var deviceCountQueryString = $"SELECT COUNT() AS {countAlias} FROM devices {(string.IsNullOrWhiteSpace(filterSql)?"": " WHERE "+filterSql)}";
             return new DeviceListFilterResult
             {
                 Results = pagedDeviceList.Select(twin =>
