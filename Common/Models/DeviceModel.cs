@@ -23,7 +23,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models
         {
             if (IdentityHelper.IsMultiTenantEnabled())
             {
-                Twin.Tags.Set("__UsserName__", IdentityHelper.GetCurrentUserName());
+                Twin.Tags.Set("__UserName__", IdentityHelper.GetCurrentUserName());
             }
         }
         /// <summary>
