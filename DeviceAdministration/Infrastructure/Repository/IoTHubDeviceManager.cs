@@ -10,6 +10,7 @@ using Newtonsoft.Json.Linq;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
+using System.Text.RegularExpressions;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -89,7 +90,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         {
             var jobId = Guid.NewGuid().ToString();
 
-            queryCondition = MakeMutliTenantCondition(queryCondition);
+            queryCondition =Regex.Replace( MakeMutliTenantCondition(queryCondition), "[\\w\\W]*[Ww][Hh][Ee][Rr][Ee]", "");
 
             await this._jobClient.ScheduleTwinUpdateAsync(jobId, queryCondition, twin, startTimeUtc, maxExecutionTimeInSeconds);
 
@@ -103,7 +104,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var method = new CloudToDeviceMethod(methodName);
             method.SetPayloadJson(payload);
 
-            queryCondition = MakeMutliTenantCondition(queryCondition);
+            queryCondition = Regex.Replace(MakeMutliTenantCondition(queryCondition), "[\\w\\W]*[Ww][Hh][Ee][Rr][Ee]", "");
 
             await this._jobClient.ScheduleDeviceMethodAsync(jobId, queryCondition, method, startTimeUtc, maxExecutionTimeInSeconds);
 
@@ -220,13 +221,16 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var userfiltercondition = $"tags.{WebConstants.DeviceUserTagName} = '{ IdentityHelper.GetCurrentUserName()}'";
             if (filterSQL.ToLower().Contains(" where "))
             {
-                filterSQL += $" AND {userfiltercondition}";
+                return $"{filterSQL} AND {userfiltercondition}";
             }
             else
             {
-                filterSQL += $" WHERE {userfiltercondition}";
+                if (filterSQL.ToLower().Contains("select"))
+                {
+                    return $" {filterSQL} WHERE {userfiltercondition} ";
+                }
+                return $" WHERE {filterSQL} AND {userfiltercondition}";
             }
-            return filterSQL;
         }
 
         #region IDispose
