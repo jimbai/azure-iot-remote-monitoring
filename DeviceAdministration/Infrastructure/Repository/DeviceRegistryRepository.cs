@@ -38,12 +38,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var query = await _documentClient.QueryAsync();
             var devices = query.Where(x => x.DeviceProperties.DeviceID == deviceId).ToList();
             var result = devices.FirstOrDefault();
-            if (result != null && 
-                IdentityHelper.IsOtherUserInvisible() && 
-                IdentityHelper.GetCurrentUserName() != result.Twin.Tags.Get(WebConstants.DeviceUserTagName)?.ToString())
-            {
-                throw new ArgumentException("deviceId is invalid");
-            }
             return result;
         }
 
