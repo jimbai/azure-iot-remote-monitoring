@@ -28,10 +28,16 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             await Task.WhenAll(baseTask, selfTask);
 
             var device = baseTask.Result;
-
+           
             // Add the twin from IoT Hub to the model
             if (device != null)
             {
+
+                if (IdentityHelper.IsOtherUserInvisible() &&
+                 IdentityHelper.GetCurrentUserName() != selfTask.Result.Tags.Get(WebConstants.DeviceUserTagName)?.ToString())
+                {
+                    throw new ArgumentException("deviceId is invalid");
+                }
                 device.Twin = selfTask.Result;
                
             }
@@ -113,7 +119,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                         return null;
                     }
                 }).Where(model => model != null).ToList(),
-                TotalDeviceCount = (IdentityHelper.IsOtherUserInvisible())? (int)await this._deviceManager.GetDeviceCountAsync(deviceCountQueryString,countAlias) : (int)await this._deviceManager.GetDeviceCountAsync(),
+                TotalDeviceCount = (IdentityHelper.IsOtherUserInvisible())? (int)await this._deviceManager.GetDeviceCountAsync(" SELECT COUNT() AS total FROM devices  ", countAlias) : (int)await this._deviceManager.GetDeviceCountAsync(),
                 TotalFilteredCount = filteredDevices.Count()
             };
         }
