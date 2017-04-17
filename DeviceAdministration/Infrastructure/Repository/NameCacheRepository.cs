@@ -1,17 +1,19 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
+﻿using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.WindowsAzure.Storage.Table;
 using Newtonsoft.Json;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 
-namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
+    namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
     /// <summary>
     /// Class for working with persistence of Device Twin (Tag and Property)
@@ -61,12 +63,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             TableQuery<NameCacheTableEntity> query = new TableQuery<NameCacheTableEntity>().Where(string.Join(" or ", filters));
             var entities = await _azureTableStorageClient.ExecuteQueryAsync(query);
             return entities.OrderBy(e => e.PartitionKey).ThenBy(e => e.RowKey).
-                Select(e => new NameCacheEntity
-                {
-                    Name = e.Name,
-                    Parameters = JsonConvert.DeserializeObject<List<Parameter>>(e.MethodParameters),
-                    Description = e.MethodDescription,
-                });
+                Select(e => BuildNameCacheFromTableEntity(e)).DistinctBy(ent => ent.Name);
         }
 
         /// <summary>
@@ -81,11 +78,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 return true;
             }
             CheckSingleEntityType(entityType);
-            NameCacheTableEntity tableEntity = new NameCacheTableEntity(entityType, entity.Name);
-            tableEntity.MethodParameters = JsonConvert.SerializeObject(entity.Parameters);
-            tableEntity.MethodDescription = entity.Description;
-            tableEntity.ETag = "*";
-            tableEntity.UserName = !isMutliTenantEnabled || isSuperAdmin || string.IsNullOrEmpty(currentUserName)? "*" : currentUserName;
+            NameCacheTableEntity tableEntity = BuildNewEntityForNameCache(entityType, entity);
             var result = await _azureTableStorageClient.DoTableInsertOrReplaceAsync<NameCacheEntity, NameCacheTableEntity>(tableEntity, BuildNameCacheFromTableEntity);
             return (result.Status == TableStorageResponseStatus.Successful);
         }
@@ -105,12 +98,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             {
                 names = names.Where(m => !m.Contains(WebConstants.DeviceUserTagName));
             }
-            var operations = names.Select(name => TableOperation.InsertOrReplace(new NameCacheTableEntity(entityType, name)
-            {
-                MethodParameters = "null",  // [WORKAROUND] Existing code requires "null" rather than null for tag or properties
-                ETag = "*",
-                UserName = !isMutliTenantEnabled || isSuperAdmin || string.IsNullOrEmpty(currentUserName) ? "*" : currentUserName
-            }));
+            var operations = names.Select(name => TableOperation.InsertOrReplace(
+                BuildNewEntityForNameCache(entityType, new NameCacheEntity(){Name = name})));
 
             while (operations.Any())
             {
@@ -132,8 +121,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public async Task<bool> DeleteNameAsync(NameCacheEntityType entityType, string name)
         {
             CheckSingleEntityType(entityType);
-            NameCacheTableEntity tableEntity = new NameCacheTableEntity(entityType, name);
-            tableEntity.ETag = "*";
+            NameCacheTableEntity tableEntity = BuildNewEntityForNameCache(entityType, new NameCacheEntity() { Name = name });
             var result = await _azureTableStorageClient.DoDeleteAsync<NameCacheEntity, NameCacheTableEntity>(tableEntity, BuildNameCacheFromTableEntity);
             return (result.Status == TableStorageResponseStatus.Successful);
         }
@@ -166,14 +154,43 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 Trace.TraceError("Failed to deserialize object for method parameters: {0}", tableEntity.MethodParameters);
             }
 
+            string nameCacheName;
+            if (isMutliTenantEnabled)
+            {
+                // Match patten for filter name in mutli-tenant model
+                Regex reg = new Regex("^__\\S+__");
+                nameCacheName = reg.Replace(tableEntity?.Name, String.Empty);
+            }
+            else
+            {
+                nameCacheName = tableEntity.Name;
+            }
+
             var nameCacheEntity = new NameCacheEntity
             {
-                Name = tableEntity?.Name,
+                Name = nameCacheName,
                 Parameters = parameters,
                 Description = tableEntity?.MethodDescription,
             };
 
             return nameCacheEntity;
+        }
+
+        internal NameCacheTableEntity BuildNewEntityForNameCache(NameCacheEntityType entityType, NameCacheEntity namecache)
+        {
+            var newcachename = namecache.Name;
+            var newUsername = !isMutliTenantEnabled || isSuperAdmin || string.IsNullOrEmpty(currentUserName) ? "*" : currentUserName;
+            if ("*" != newUsername)
+            {
+                newcachename = $"__{IdentityHelper.GetUserShortName(newUsername)}__{namecache.Name}";
+            }
+            return new NameCacheTableEntity(entityType, newcachename)
+            {
+                MethodParameters = namecache.Parameters == null ? "null" : JsonConvert.SerializeObject(namecache.Parameters), // [WORKAROUND] Existing code requires "null" rather than null for tag or properties
+                MethodDescription = namecache.Description,
+                UserName = newUsername,
+                ETag = "*"
+            };
         }
     }
 }

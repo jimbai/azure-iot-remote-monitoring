@@ -161,6 +161,7 @@
     <Compile Include="Configurations\IConfigurationProvider.cs" />
     <Compile Include="Constants\ApiRegistrationProviderTypes.cs" />
     <Compile Include="Constants\WebConstants.cs" />
+    <Compile Include="Extensions\LinqExtensions.cs" />
     <Compile Include="Extensions\ObjectExtension.cs" />
     <Compile Include="Extensions\ProcessExtension.cs" />
     <Compile Include="Extensions\StringExtension.cs" />

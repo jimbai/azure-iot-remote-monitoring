@@ -8,5 +8,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public string Name { get; set; }
         public List<Parameter> Parameters { get; set; }
         public string Description { get; set; }
+        public string UserName { get; set; }
     }
 }
