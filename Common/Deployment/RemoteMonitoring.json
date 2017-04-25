@@ -726,7 +726,8 @@
                         "RulesEventHub.ConnectionString": "[listkeys(variables('ehResourceId'), variables('ehVersion')).primaryConnectionString]",
                         "ObjectTypePrefix": "",
                         "MapApiQueryKey": "[listSecrets(variables('bingMapsName'), variables('bingMapsVersion')).QueryKey]",
-                        "SolutionName": "[variables('webSiteName')]"
+                        "SolutionName": "[variables('webSiteName')]",
+                        "SuperAdminList": ""
                     }
                 }
             ]
@@ -788,7 +789,8 @@
                         "RulesEventHub.ConnectionString": "[listkeys(variables('ehResourceId'), variables('ehVersion')).primaryConnectionString]",
                         "ObjectTypePrefix": "",
                         "MapApiQueryKey": "[listSecrets(variables('bingMapsName'), variables('bingMapsVersion')).QueryKey]",
-                        "SolutionName": "[variables('webSiteName')]"
+                        "SolutionName": "[variables('webSiteName')]",
+                        "SuperAdminList": ""
                     }
                 }
             ]
