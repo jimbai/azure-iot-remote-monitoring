@@ -1991,14 +1991,8 @@ table#alertHistoryTable tr.selectedAlert {
 }
 .details_grid_header_image_edit {
   position: absolute;
-  right: 8px;
-  bottom: 8px;
-  width: 33px;
-  height: 33px;
-  background-image: url("/Content/img/edit_device_image.svg");
-}
-.details_grid_header_image_edit:hover {
-  background-image: url("/Content/img/edit_device_image_hover.svg");
+  right: 10px;
+  bottom: 10px;
 }
 .details_grid_header_actions {
   float: left;
