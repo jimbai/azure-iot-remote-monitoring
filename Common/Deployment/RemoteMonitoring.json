@@ -726,8 +726,7 @@
                         "RulesEventHub.ConnectionString": "[listkeys(variables('ehResourceId'), variables('ehVersion')).primaryConnectionString]",
                         "ObjectTypePrefix": "",
                         "MapApiQueryKey": "[listSecrets(variables('bingMapsName'), variables('bingMapsVersion')).QueryKey]",
-                        "SolutionName": "[variables('webSiteName')]",
-                        "SuperAdminList": ""
+                        "SolutionName": "[variables('webSiteName')]"
                     }
                 }
             ]
