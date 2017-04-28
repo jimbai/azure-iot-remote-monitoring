@@ -17,7 +17,16 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configura
 
         public string GetConfigurationSettingValue(string configurationSettingName)
         {
-            return this.GetConfigurationSettingValueOrDefault(configurationSettingName, string.Empty);
+            string retval = string.Empty;
+            try
+            {
+                retval = this.GetConfigurationSettingValueOrDefault(configurationSettingName, string.Empty);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+            return retval;
         }
 
         public string GetConfigurationSettingValueOrDefault(string configurationSettingName, string defaultValue)
