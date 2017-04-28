@@ -107,58 +107,58 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web.We
             Assert.Equal(data, telemetrySummary);
         }
 
-        //[Fact]
-        //public async void GetLatestAlertHistoryAsyncTest()
-        //{
-        //    var result = fixture.Create<DeviceListFilterResult>();
-        //    var locationsModel = fixture.Create<DeviceListLocationsModel>();
-        //    var itemModels = fixture.Create<IEnumerable<AlertHistoryItemModel>>();
-        //    Func<string, DateTime?> func = a => null;
+        [Fact]
+        public async void GetLatestAlertHistoryAsyncTest()
+        {
+            var result = fixture.Create<DeviceListFilterResult>();
+            var locationsModel = fixture.Create<DeviceListLocationsModel>();
+            var itemModels = fixture.Create<IEnumerable<AlertHistoryItemModel>>();
+            Func<string, DateTime?> func = a => null;
 
-        //    alertLogic.Setup(mock => mock.LoadLatestAlertHistoryAsync(It.IsAny<DateTime>(), It.IsAny<int>()))
-        //        .ReturnsAsync(itemModels);
-        //    deviceLogic.Setup(mock => mock.GetDevices(It.IsAny<DeviceListFilter>())).ReturnsAsync(result);
-        //    deviceLogic.Setup(mock => mock.ExtractLocationsData(It.IsAny<List<DeviceModel>>())).Returns(locationsModel);
-        //    telemetryLogic.Setup(
-        //        mock => mock.ProduceGetLatestDeviceAlertTime(It.IsAny<IEnumerable<AlertHistoryItemModel>>()))
-        //        .Returns(func);
+            alertLogic.Setup(mock => mock.LoadLatestAlertHistoryAsync(It.IsAny<DateTime>(), It.IsAny<int>(), null))
+                .ReturnsAsync(itemModels);
+            deviceLogic.Setup(mock => mock.GetDevices(It.IsAny<DeviceListFilter>())).ReturnsAsync(result);
+            deviceLogic.Setup(mock => mock.ExtractLocationsData(It.IsAny<List<DeviceModel>>())).Returns(locationsModel);
+            telemetryLogic.Setup(
+                mock => mock.ProduceGetLatestDeviceAlertTime(It.IsAny<IEnumerable<AlertHistoryItemModel>>()))
+                .Returns(func);
 
-        //    var res = await telemetryApiController.GetLatestAlertHistoryAsync();
-        //    res.AssertOnError();
-        //    var data = res.ExtractContentAs<AlertHistoryResultsModel>();
-        //    if (itemModels.Count() < 18)
-        //        Assert.Equal(data.Data.Count, itemModels.Count());
-        //    else
-        //    {
-        //        Assert.Equal(data.Data.Count, 18);
-        //    }
-        //    Assert.Equal(data.Devices.Count, itemModels.Count());
-        //    Assert.Equal(data.TotalAlertCount, itemModels.Count());
-        //    Assert.Equal(data.TotalFilteredCount, itemModels.Count());
-        //    Assert.Equal(data.Devices.Select(d => d.Status == AlertHistoryDeviceStatus.AllClear).Count(), itemModels.Count());
+            var res = await telemetryApiController.GetLatestAlertHistoryAsync();
+            res.AssertOnError();
+            var data = res.ExtractContentAs<AlertHistoryResultsModel>();
+            if (itemModels.Count() < 18)
+                Assert.Equal(data.Data.Count, itemModels.Count());
+            else
+            {
+                Assert.Equal(data.Data.Count, 18);
+            }
+            Assert.Equal(data.Devices.Count, itemModels.Count());
+            Assert.Equal(data.TotalAlertCount, itemModels.Count());
+            Assert.Equal(data.TotalFilteredCount, itemModels.Count());
+            Assert.Equal(data.Devices.Select(d => d.Status == AlertHistoryDeviceStatus.AllClear).Count(), itemModels.Count());
 
-        //    func = a => (DateTime.Now - TimeSpan.FromMinutes(5.0));
-        //    telemetryLogic.Setup(
-        //        mock => mock.ProduceGetLatestDeviceAlertTime(It.IsAny<IEnumerable<AlertHistoryItemModel>>()))
-        //        .Returns(func);
+            func = a => (DateTime.Now - TimeSpan.FromMinutes(5.0));
+            telemetryLogic.Setup(
+                mock => mock.ProduceGetLatestDeviceAlertTime(It.IsAny<IEnumerable<AlertHistoryItemModel>>()))
+                .Returns(func);
 
-        //    res = await telemetryApiController.GetLatestAlertHistoryAsync();
-        //    res.AssertOnError();
-        //    data = res.ExtractContentAs<AlertHistoryResultsModel>();
-        //    Assert.Equal(data.Devices.Select(d => d.Status == AlertHistoryDeviceStatus.Critical).Count(),
-        //        itemModels.Count());
+            res = await telemetryApiController.GetLatestAlertHistoryAsync();
+            res.AssertOnError();
+            data = res.ExtractContentAs<AlertHistoryResultsModel>();
+            Assert.Equal(data.Devices.Select(d => d.Status == AlertHistoryDeviceStatus.Critical).Count(),
+                itemModels.Count());
 
-        //    func = a => (DateTime.Now - TimeSpan.FromMinutes(15.0));
-        //    telemetryLogic.Setup(
-        //        mock => mock.ProduceGetLatestDeviceAlertTime(It.IsAny<IEnumerable<AlertHistoryItemModel>>()))
-        //        .Returns(func);
+            func = a => (DateTime.Now - TimeSpan.FromMinutes(15.0));
+            telemetryLogic.Setup(
+                mock => mock.ProduceGetLatestDeviceAlertTime(It.IsAny<IEnumerable<AlertHistoryItemModel>>()))
+                .Returns(func);
 
-        //    res = await telemetryApiController.GetLatestAlertHistoryAsync();
-        //    res.AssertOnError();
-        //    data = res.ExtractContentAs<AlertHistoryResultsModel>();
-        //    Assert.Equal(data.Devices.Select(d => d.Status == AlertHistoryDeviceStatus.Caution).Count(),
-        //        itemModels.Count());
-        //}
+            res = await telemetryApiController.GetLatestAlertHistoryAsync();
+            res.AssertOnError();
+            data = res.ExtractContentAs<AlertHistoryResultsModel>();
+            Assert.Equal(data.Devices.Select(d => d.Status == AlertHistoryDeviceStatus.Caution).Count(),
+                itemModels.Count());
+        }
 
         [Fact]
         public async void GetDeviceLocationDataTest()
