@@ -1,9 +1,10 @@
 ﻿using System.Collections.Generic;
+using Newtonsoft.Json;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models.Commands;
 using Microsoft.Azure.Devices.Shared;
-using Newtonsoft.Json;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models
 {
@@ -23,7 +24,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models
         {
             if (IdentityHelper.IsMultiTenantEnabled())
             {
-                Twin.Tags.Set("__UserName__", IdentityHelper.GetCurrentUserName());
+                Twin.Tags.Set(WebConstants.DeviceUserTagName, IdentityHelper.GetCurrentUserName());
             }
         }
         /// <summary>

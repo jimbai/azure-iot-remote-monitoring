@@ -135,7 +135,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             return propValModels;
         }
 
-        public override Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
+        public override Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName)
         {
             return _deviceRepository.GetDeviceIdsByUserName(userName);
         }

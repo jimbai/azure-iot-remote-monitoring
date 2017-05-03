@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.Azure.Devices.Shared;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -23,7 +23,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         Task UpdateTwinAsync(string deviceId, Twin twin);
         Task<IEnumerable<Twin>> QueryDevicesAsync(DeviceListFilter filter, int maxDevices = 10000);
         Task<long> GetDeviceCountAsync();
-        Task<int> GetDeviceCountAsync(string filterSQL, string countColAlias);
+        Task<int> GetDeviceCountAsync(string filterSQL, string countColAlias= "total");
         Task<IEnumerable<DeviceJob>> GetDeviceJobsByDeviceIdAsync(string deviceId);
         Task<IEnumerable<DeviceJob>> GetDeviceJobsByJobIdAsync(string jobId);
         Task<IEnumerable<string>> GetJobResponsesAsync();

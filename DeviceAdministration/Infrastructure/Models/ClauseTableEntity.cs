@@ -1,6 +1,6 @@
-﻿using Microsoft.WindowsAzure.Storage.Table;
+﻿using System;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
-using System;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models
 {

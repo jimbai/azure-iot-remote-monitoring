@@ -1,16 +1,16 @@
-﻿using System;
+﻿using Microsoft.Azure.Devices.Shared;
+using Newtonsoft.Json.Linq;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
-using Microsoft.Azure.Devices.Shared;
-using Newtonsoft.Json.Linq;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
-using System.Text.RegularExpressions;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
+
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -77,8 +77,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public async Task<Twin> GetTwinAsync(string deviceId)
         {
-            var result= await _deviceManager.GetTwinAsync(deviceId);
-            return result;
+            return await _deviceManager.GetTwinAsync(deviceId);
         }
 
         public async Task UpdateTwinAsync(string deviceId, Twin twin)
@@ -113,14 +112,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
         public async Task<IEnumerable<Twin>> QueryDevicesAsync(DeviceListFilter filter, int maxDevices = 10000)
         {
-            //if (IdentityHelper.IsMultiTenantEnabled()&&!IdentityHelper.IsSuperAdmin())
-            //{
-            //    if (filter?.Clauses == null)
-            //    {
-            //        filter.Clauses = new List<Clause>();
-            //    }
-            //    filter.Clauses.Add(new Clause { ColumnName = "tags.__UserName__", ClauseType = ClauseType.EQ, ClauseDataType = TwinDataType.String, ClauseValue = IdentityHelper.GetCurrentUserName() });
-            //}
             var sqlQuery = MakeMutliTenantCondition(filter.GetSQLQuery());
 
             var deviceQuery = this._deviceManager.CreateQuery(sqlQuery);

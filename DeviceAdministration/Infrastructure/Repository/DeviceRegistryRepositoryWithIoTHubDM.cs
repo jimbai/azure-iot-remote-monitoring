@@ -1,13 +1,14 @@
-﻿using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
-using Microsoft.Azure.Devices.Shared;
+﻿
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.Devices.Shared;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -98,12 +99,9 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
 
             // Query on DocDB for traditional device properties, commands and so on
             var deviceIds = pagedDeviceList.Select(twin => twin.DeviceId);
-            var devicesList = (await queryTask).ToList();
+            var devicesList = (await queryTask);
             var devicesFromDocDB = devicesList.Where(x => deviceIds.Contains(x.DeviceProperties.DeviceID))
                 .ToDictionary(d => d.DeviceProperties.DeviceID);
-            var countAlias = "total";
-            string filterSql = filter.GetSQLCondition();
-            var deviceCountQueryString = $"SELECT COUNT() AS {countAlias} FROM devices {(string.IsNullOrWhiteSpace(filterSql)?"": " WHERE "+filterSql)}";
             return new DeviceListFilterResult
             {
                 Results = pagedDeviceList.Select(twin =>
@@ -119,7 +117,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                         return null;
                     }
                 }).Where(model => model != null).ToList(),
-                TotalDeviceCount = (IdentityHelper.IsOtherUserInvisible())? (int)await this._deviceManager.GetDeviceCountAsync(" SELECT COUNT() AS total FROM devices  ", countAlias) : (int)await this._deviceManager.GetDeviceCountAsync(),
+                TotalDeviceCount = (IdentityHelper.IsOtherUserInvisible())? (int)await this._deviceManager.GetDeviceCountAsync(" SELECT COUNT() AS total FROM devices  ") : (int)await this._deviceManager.GetDeviceCountAsync(),
                 TotalFilteredCount = filteredDevices.Count()
             };
         }
@@ -165,12 +163,8 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             await _deviceManager.UpdateTwinAsync( deviceId,  twin);
         }
 
-        public override async Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
+        public override async Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName)
         {
-            if (string.IsNullOrWhiteSpace(userName))
-            {
-                userName = IdentityHelper.GetCurrentUserName();
-            }
 
             var devices = await _deviceManager.QueryDevicesAsync(new DeviceListFilter
             {
@@ -181,7 +175,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                     new Clause() {ColumnName = $"tags.{WebConstants.DeviceUserTagName}" , ClauseType= ClauseType.EQ, ClauseValue = userName}
                 }
             });
-            return devices?.Select(m=>m.DeviceId).ToList();
+            return devices.Select(m=>m.DeviceId).ToList();
         }
     }
 }

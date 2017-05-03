@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.WindowsAzure.Storage.Table;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,7 +8,6 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Exceptions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
-using Microsoft.WindowsAzure.Storage.Table;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -71,22 +71,26 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var jobs = new List<JobResponse>();
 
             var query = this._jobClient.CreateQuery(null, queryStatus);
-            Func<JobResponse, bool> predicate = j => j.Status == status;
-            if (IdentityHelper.IsMultiTenantEnabled() && !IdentityHelper.IsSuperAdmin())
+            if (IdentityHelper.IsOtherUserInvisible())
             {
-                var jobIds = await QueryJobIDsByUserName();
-                predicate = j => j.Status == status && (jobIds?.Contains(j.JobId) == true);
+                var jobIds = await QueryJobIDsByUserName(IdentityHelper.GetCurrentUserName());
+                await Task.WhenAll(jobIds.Select(m => new Task(async () =>
+                {
+                    jobs.Add( await this._jobClient.GetJobAsync(m));
+                }
+                )));
+                return jobs;
             }
             while (query.HasMoreResults)
             {
                 var result = await query.GetNextAsJobResponseAsync();
-                jobs.AddRange(result.Where(predicate));
+                jobs.AddRange(result);
             }
 
             return jobs;
         }
 
-        public async Task<IEnumerable<string>> QueryJobIDsByUserName(string userName=null)
+        public async Task<IEnumerable<string>> QueryJobIDsByUserName(string userName)
         {
             if (string.IsNullOrWhiteSpace(userName))
             {

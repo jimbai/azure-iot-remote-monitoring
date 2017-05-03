@@ -5,6 +5,8 @@ using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Mvc;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 using DeviceManagement.Infrustructure.Connectivity.Exceptions;
 using DeviceManagement.Infrustructure.Connectivity.Models.TerminalDevice;
 using GlobalResources;
@@ -20,8 +22,7 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastr
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Security;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
+
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Controllers
 {

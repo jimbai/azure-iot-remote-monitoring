@@ -2,14 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Azure.Devices.Shared;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Exceptions;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Exceptions;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
-using Microsoft.Azure.Devices.Shared;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Constants;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Repository
 {
@@ -113,7 +113,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             {
                 throw new DeviceNotRegisteredException(device.DeviceProperties.DeviceID);
             }
-            if (IdentityHelper.IsOtherUserInvisible() && existingDevice.Twin.Tags.Get(WebConstants.DeviceUserTagName) != device.Twin.Tags.Get(WebConstants.DeviceUserTagName))
+            if (IdentityHelper.IsOtherUserInvisible() && existingDevice.Twin.Tags[WebConstants.DeviceUserTagName] != device.Twin.Tags.Get(WebConstants.DeviceUserTagName))
             {
                 throw new NotSupportedException($"not allowed to update the  {WebConstants.DeviceUserTagName}");
             }
@@ -185,14 +185,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         public virtual async Task<DeviceListFilterResult> GetDeviceList(DeviceListFilter filter)
         {
             List<DeviceModel> deviceList = await this.GetAllDevicesAsync();
-            if (IdentityHelper.IsOtherUserInvisible())
-            {
-                if (filter.Clauses == null)
-                {
-                    filter.Clauses = new List<Clause>();
-                }
-                filter.Clauses.Add(new Clause { ColumnName = $"tags.{WebConstants.DeviceUserTagName}", ClauseType = ClauseType.EQ, ClauseDataType = TwinDataType.String, ClauseValue = IdentityHelper.GetCurrentUserName() });
-            }
+
             IQueryable<DeviceModel> filteredDevices = FilterHelper.FilterDeviceList(deviceList.AsQueryable<DeviceModel>(), filter.Clauses);
 
             IQueryable<DeviceModel> filteredAndSearchedDevices = this.SearchDeviceList(filteredDevices, filter.SearchQuery);
@@ -210,7 +203,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
                 TotalFilteredCount = filteredCount
             };
         }
-
         /// <summary>
         /// Queries the DocumentDB and retrieves all documents in the collection
         /// </summary>
@@ -218,13 +210,9 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         private async Task<List<DeviceModel>> GetAllDevicesAsync()
         {
             var devices = await _documentClient.QueryAsync();
-            var result = devices?.ToList();
-            if (result?.Count>0&&IdentityHelper.IsOtherUserInvisible())
-            {
-                return result.Where(m => m.Twin.Tags[WebConstants.DeviceUserTagName]?.ToString() == IdentityHelper.GetCurrentUserName())?.ToList();
-            }
-            return result;
+            return devices.ToList();
         }
+
 
         private IQueryable<DeviceModel> SearchDeviceList(IQueryable<DeviceModel> deviceList, string search)
         {
@@ -290,7 +278,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             }
         }
 
-        public virtual async Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
+        public virtual async Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName )
         {
             throw new NotImplementedException();
         }
@@ -300,14 +288,14 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var device = await GetDeviceAsync(deviceId);
             if (device == null)
             {
-                throw new NotImplementedException("deviceId is invalid");
+                throw new ArgumentException("deviceId is invalid");
             }
             if (IdentityHelper.IsOtherUserInvisible()&& twin.Tags.Get(WebConstants.DeviceUserTagName) !=device.Twin.Tags.Get(WebConstants.DeviceUserTagName))
             {
-                throw new NotImplementedException($"not allowed to update the  {WebConstants.DeviceUserTagName}");
+                throw new ArgumentException($"not allowed to update the  {WebConstants.DeviceUserTagName}");
             }
             device.Twin = twin;
-           await UpdateDeviceAsync(device);
+            await UpdateDeviceAsync(device);
         }
 
         public virtual async Task<Twin> GetTwinAsync(string deviceId)

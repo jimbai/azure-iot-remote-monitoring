@@ -240,7 +240,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
                         
                     if (IdentityHelper.IsOtherUserInvisible())
                     {
-                        var deviceIds = await _deviceLogic.GetDeviceIdsByUserName();
+                        var deviceIds = await _deviceLogic.GetDeviceIdsByUserName(IdentityHelper.GetCurrentUserName());
                         Func<AlertHistoryItemModel, bool> filter = entity => deviceIds.Contains(entity.DeviceId);
                         data = await _alertsLogic.LoadLatestAlertHistoryAsync(
                             currentTime.Subtract(CautionAlertMaxDelta),

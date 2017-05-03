@@ -1,11 +1,7 @@
-﻿using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
+﻿
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Web;
-
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Configurations;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
 {

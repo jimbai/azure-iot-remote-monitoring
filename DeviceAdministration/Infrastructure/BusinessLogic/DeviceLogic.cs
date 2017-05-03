@@ -942,7 +942,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             }
         }
 
-        public virtual Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName = null)
+        public virtual Task<IEnumerable<string>> GetDeviceIdsByUserName(string userName)
         {
             throw new NotImplementedException();
         }

@@ -1,8 +1,8 @@
-﻿using System;
-using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
-using Microsoft.WindowsAzure.Storage.Table;
-using Newtonsoft.Json;
+﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Converters;
+using System;
+using Microsoft.WindowsAzure.Storage.Table;
+using Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Extensions;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models
 {
