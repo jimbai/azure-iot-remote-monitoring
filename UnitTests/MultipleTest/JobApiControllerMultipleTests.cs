@@ -8,6 +8,7 @@ using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.Mode
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infrastructure.Models;
 using Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.DataTables;
 using System;
+using System.Net;
 
 namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web.WebApiControllers
 {
@@ -93,29 +94,60 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.UnitTests.Web.We
             result.AssertOnError();
             var table = result.ExtractContentAs<DataTablesResponse<DeviceJobModel>>();
             //not a real environment, user alias is string.empty.The api controller will filter out all items.
-            Assert.Equal(table.Data.Length, 0);
+            Assert.Equal(table.Data.Length, 1);
         }
 
         [Fact]
         public async void CancelJobTest()
         {
+            JobRepositoryModel repositoryModel = fixture.Create<JobRepositoryModel>();
+            repositoryModel.CreatorAlias = string.Empty;
             var jobResponse = fixture.Create<JobResponse>();
             iotHubDeviceManager.Setup(x => x.CancelJobByJobIdAsync(It.IsNotNull<string>())).ReturnsAsync(jobResponse);
+            jobRepository.Setup(x => x.QueryByJobIDAsync("job1")).ReturnsAsync(repositoryModel);
             var result = await controller.CancelJob("job1");
             result.AssertOnError();
             result.ExtractContentDataAs<DeviceJobModel>();
         }
 
         [Fact]
+        public async void CancleJobUnauthorizedTest()
+        {
+            JobRepositoryModel repositoryModel = fixture.Create<JobRepositoryModel>();
+            repositoryModel.CreatorAlias = "someadmin";
+            var jobResponse = fixture.Create<JobResponse>();
+            iotHubDeviceManager.Setup(x => x.CancelJobByJobIdAsync(It.IsNotNull<string>())).ReturnsAsync(jobResponse);
+            jobRepository.Setup(x => x.QueryByJobIDAsync("job1")).ReturnsAsync(repositoryModel);
+            var result = await controller.CancelJob("job1");
+            Assert.Equal(result.StatusCode, HttpStatusCode.Forbidden);
+
+        }
+
+        [Fact]
         public async void GetJobResultsTest()
         {
+            JobRepositoryModel repositoryModel = fixture.Create<JobRepositoryModel>();
+            repositoryModel.CreatorAlias = string.Empty;
             var jobResponses = fixture.Create<IEnumerable<DeviceJob>>();
             iotHubDeviceManager.Setup(x => x.GetDeviceJobsByJobIdAsync(It.IsNotNull<string>())).ReturnsAsync(jobResponses);
+            jobRepository.Setup(x => x.QueryByJobIDAsync("job1")).ReturnsAsync(repositoryModel);
             var result = await controller.GetJobResults("job1");
             result.AssertOnError();
             result.ExtractContentDataAs<IEnumerable<DeviceJob>>();
         }
 
+        [Fact]
+        public async void GetJobUnauthorizedTest()
+        {
+            JobRepositoryModel repositoryModel = fixture.Create<JobRepositoryModel>();
+            //in test scenario, getcurrentuser will return "". so in this case, current user is not creator of the job.
+            repositoryModel.CreatorAlias = "someadmin";
+            var jobResponses = fixture.Create<IEnumerable<DeviceJob>>();
+            iotHubDeviceManager.Setup(x => x.GetDeviceJobsByJobIdAsync(It.IsNotNull<string>())).ReturnsAsync(jobResponses);
+            jobRepository.Setup(x => x.QueryByJobIDAsync("job1")).ReturnsAsync(repositoryModel);
+            var result = await controller.GetJobResults("job1");
+            Assert.Equal(result.StatusCode, HttpStatusCode.Forbidden);
+        }
         #region IDisposable Support
         private bool disposedValue = false; // To detect redundant calls
 

@@ -64,6 +64,10 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         // PUT: api/v1/jobs/{id}/cancel
         public async Task<HttpResponseMessage> CancelJob(string id)
         {
+            if (!await IsOwnerOfJob(id))
+            {
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Forbidden);
+            }
             return await GetServiceResponseAsync<DeviceJobModel>(async () =>
             {
                 var jobResponse = await _iotHubDeviceManager.CancelJobByJobIdAsync(id);
@@ -77,6 +81,11 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         // GET: api/v1/jobs/{id}/results
         public async Task<HttpResponseMessage> GetJobResults(string id)
         {
+            if (!await IsOwnerOfJob(id))
+            {
+                return new HttpResponseMessage(System.Net.HttpStatusCode.Forbidden);
+            }
+
             return await GetServiceResponseAsync<IEnumerable<DeviceJob>>(async () =>
             {
                 var jobResponses = await _iotHubDeviceManager.GetDeviceJobsByJobIdAsync(id);
@@ -88,6 +97,12 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Web.
         {
             Task<JobRepositoryModel> queryJobTask = _jobRepository.QueryByJobIDAsync(job.JobId);
             await DeviceJobHelper.AddMoreDetailsToJobAsync(job, queryJobTask);
+        }
+
+        private async Task<bool> IsOwnerOfJob(string id)
+        {
+            var job = await _jobRepository.QueryByJobIDAsync(id);
+            return job.CreatorAlias == IdentityHelper.GetCurrentUserName();
         }
     }
 }
