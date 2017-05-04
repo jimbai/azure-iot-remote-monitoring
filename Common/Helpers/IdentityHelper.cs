@@ -12,16 +12,6 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.Common.Helpers
             return System.Web.HttpContext.Current?.User.Identity.Name ?? string.Empty;
         }
 
-        public static string GetUserShortName(string longname = null)
-        {
-            longname = longname == null ? GetCurrentUserName() : longname;
-            if (longname.Contains('@'))
-            {
-                return longname.Split('@')[0];
-            }
-            return longname;
-        }
-
         public static bool IsOtherUserInvisible()
         {
             return IsMultiTenantEnabled() && !IsSuperAdmin();

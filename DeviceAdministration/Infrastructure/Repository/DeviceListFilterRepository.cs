@@ -120,7 +120,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
         {
             
             var rowkeyFilter = isMutliTenantEnabled && !isSuperAdmin ?
-                TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, $"__{IdentityHelper.GetUserShortName(userName)}__{name}") :
+                TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, $"__{userName}__{name}") :
                 TableQuery.GenerateFilterCondition("RowKey", QueryComparisons.Equal, name);
 
             // Check whether other filter(not same filterId) have same filter name
@@ -401,7 +401,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var newUsername = string.IsNullOrEmpty(filter.UserName) ? "*" : filter.UserName;
             if ("*" != newUsername)
             {
-                newfilterName = $"__{IdentityHelper.GetUserShortName(newUsername)}__{filter.Name}";
+                newfilterName = $"__{newUsername}__{filter.Name}";
             }
             return new DeviceListFilterTableEntity(filter) {RowKey=newfilterName, Name=newfilterName, UserName = newUsername, ETag="*" };
         }

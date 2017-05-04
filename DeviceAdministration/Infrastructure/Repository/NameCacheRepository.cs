@@ -182,7 +182,7 @@ namespace Microsoft.Azure.Devices.Applications.RemoteMonitoring.DeviceAdmin.Infr
             var newUsername = !isMutliTenantEnabled || isSuperAdmin || string.IsNullOrEmpty(currentUserName) ? "*" : currentUserName;
             if ("*" != newUsername)
             {
-                newcachename = $"__{IdentityHelper.GetUserShortName(newUsername)}__{namecache.Name}";
+                newcachename = $"__{newUsername}__{namecache.Name}";
             }
             return new NameCacheTableEntity(entityType, newcachename)
             {
