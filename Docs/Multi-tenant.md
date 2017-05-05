@@ -4,7 +4,7 @@
 After deploying the Remote Monitoring, following steps will enable multiple tenant feature:
 
 - Open the azure management portal, navigate to the app service of your Remote Monitoring solution. Notice the app service’s name is the same as your Remote Monitoring solution’s name.
-- Navigate **Settings**->**Application settings** to add the super admin account to the SuperAdminList. If there are more than one super admin account, add ‘;’ between the accounts.
+- Navigate to **Settings**->**Application settings** and add the super admin account to the SuperAdminList. If there are more than one super admin account, add ‘;’ between the accounts.
 - Save the changes and restart your app services.
 ![][img-superadminlist]
 
